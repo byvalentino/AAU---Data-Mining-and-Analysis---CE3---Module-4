@@ -1,0 +1,225 @@
+{
+ "module": 4,
+ "concepts": [
+  {
+   "id": "wald_interval",
+   "name": "the Wald interval for a proportion",
+   "slide": "Definition — the Wald interval",
+   "formula": "p̂ ± z·√( p̂(1−p̂)/n ), with p̂ = k/n successes in n trials",
+   "citation": "Brown, Cai & DasGupta (2001), Statistical Science 16(2), 101–133",
+   "lab": 1,
+   "function": "naive_interval",
+   "check": "verify/check_01.py"
+  },
+  {
+   "id": "wilson_interval",
+   "name": "the Wilson score interval",
+   "slide": "Definition — the Wilson score interval",
+   "formula": "( p̂ + z²/2n ± z·√( p̂(1−p̂)/n + z²/4n² ) ) / ( 1 + z²/n )",
+   "citation": "Wilson (1927), Journal of the American Statistical Association 22(158), 209–212",
+   "lab": 1,
+   "function": "wilson_interval",
+   "check": "verify/check_01.py"
+  },
+  {
+   "id": "coverage",
+   "name": "coverage of a nominal 95 per cent interval",
+   "slide": "Definition — coverage, and what a half-width costs",
+   "formula": "coverage(p, n) = (1/R)·Σ_{r=1}^{R} 1{ low_r ≤ p ≤ high_r }",
+   "citation": "Brown, Cai & DasGupta (2001), Statistical Science 16(2), 101–133",
+   "lab": 1,
+   "function": "coverage",
+   "check": "verify/check_01.py"
+  },
+  {
+   "id": "labels_for_a_half_width",
+   "name": "the labels a stated half-width costs",
+   "slide": "Definition — coverage, and what a half-width costs",
+   "formula": "n = ⌈ 0.25·(z/h)² ⌉ at the worst case p = ½",
+   "citation": "Brown, Cai & DasGupta (2001)",
+   "lab": 1,
+   "function": "labels_needed",
+   "check": "verify/check_01.py"
+  },
+  {
+   "id": "entropy",
+   "name": "Shannon entropy",
+   "slide": "Definition — entropy and cross-entropy",
+   "formula": "H(P) = −Σ_i P(i)·log P(i)",
+   "citation": "Shannon (1948), Bell System Technical Journal 27(3), 379–423",
+   "lab": 2,
+   "function": "entropy",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "cross_entropy",
+   "name": "cross-entropy",
+   "slide": "Definition — entropy and cross-entropy",
+   "formula": "H(P,Q) = −Σ_i P(i)·log Q(i)",
+   "citation": "Murphy (2022), Probabilistic Machine Learning, §6.1.2",
+   "lab": 2,
+   "function": "cross_entropy",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "kl_divergence",
+   "name": "the Kullback–Leibler divergence",
+   "slide": "Definition — the Kullback–Leibler divergence",
+   "formula": "D(P ‖ Q) = Σ_i P(i)·log( P(i) / Q(i) ) = H(P,Q) − H(P), in nats",
+   "citation": "Kullback & Leibler (1951), Annals of Mathematical Statistics 22(1), 79–86",
+   "lab": 2,
+   "function": "kl_divergence",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "jensen_inequality",
+   "name": "Jensen's inequality",
+   "slide": "Definition — Jensen's inequality",
+   "formula": "f( E[X] ) ≤ E[ f(X) ] for convex f, with equality only where f is straight or X never varies",
+   "citation": "Jensen (1906), Acta Mathematica 30, 175–193",
+   "lab": 2,
+   "function": "kl_divergence",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "symmetrised_index",
+   "name": "the symmetrised index, Jeffreys' divergence",
+   "slide": "Definition — the symmetrised index",
+   "formula": "J(P,Q) = Σ_i ( P(i) − Q(i) )·log( P(i) / Q(i) ) = D(P‖Q) + D(Q‖P)",
+   "citation": "Jeffreys (1946), Proceedings of the Royal Society A 186, 453–461",
+   "lab": 2,
+   "function": "population_stability_index",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "index_noise_floor",
+   "name": "the index's noise floor at a stated bin count",
+   "slide": "Definition — the index's noise floor",
+   "formula": "floor(B) = median over R resamples of J( reference, resample of the reference ) at B bins",
+   "citation": "Yurdakul & Naranjo (2020), Journal of Risk Model Validation 14(4), 89–100",
+   "lab": 2,
+   "function": "index_threshold",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "materiality_threshold",
+   "name": "the materiality threshold, derived from the measured floor",
+   "slide": "Definition — the materiality threshold, derived from the floor",
+   "formula": "threshold(B, q) = Quantile_q { J( reference, resample of the reference ) at B bins }, over the same R resamples",
+   "citation": "Yurdakul & Naranjo (2020), Journal of Risk Model Validation 14(4), 89–100",
+   "lab": 2,
+   "function": "index_threshold",
+   "check": "verify/check_02.py"
+  },
+  {
+   "id": "wasserstein_1",
+   "name": "the Wasserstein-1 distance",
+   "slide": "Definition — the Wasserstein-1 distance",
+   "formula": "W₁(P,Q) = ∫ |F_P(x) − F_Q(x)| dx = ∫₀¹ |F_P⁻¹(u) − F_Q⁻¹(u)| du",
+   "citation": "Vallender (1974), Theory of Probability and Its Applications 18(4), 784–786",
+   "lab": 3,
+   "function": "wasserstein",
+   "check": "verify/check_03.py"
+  },
+  {
+   "id": "two_binnings",
+   "name": "the two binnings inside compare_four",
+   "slide": "Definition — the two binnings inside compare_four",
+   "formula": "H and D: equal-width edges over both samples · J: the reference's quantile edges, opened at both ends",
+   "citation": "Siddiqi (2006), Credit Risk Scorecards",
+   "lab": 3,
+   "function": "compare_four",
+   "check": "verify/check_03.py"
+  },
+  {
+   "id": "standardised_shift",
+   "name": "the standardised shift, Glass's Δ",
+   "slide": "Definition — the standardised shift, and the rule it is read against",
+   "formula": "Δ = ( mean_current − mean_reference ) / s_reference, ddof = 1",
+   "citation": "Glass (1976), Educational Researcher 5(10), 3–8",
+   "lab": 4,
+   "function": "verdict",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "material_rule",
+   "name": "the rule a shift is called material by, with a derived index bound",
+   "slide": "Definition — the standardised shift, and the rule it is read against",
+   "formula": "material when |Δ| ≥ 2.0 or J ≥ threshold(B, q) derived from this feature's own null",
+   "citation": "Yurdakul & Naranjo (2020)",
+   "lab": 4,
+   "function": "verdict",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "positive_control",
+   "name": "the positive control on a null result",
+   "slide": "Definition — the positive control",
+   "formula": "verdict( reference, current + k·s_reference ) must return material, with k stated beside the result",
+   "citation": "Saltelli et al. (2019), Environmental Modelling and Software 114, 29–39",
+   "lab": 4,
+   "function": "positive_control",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "detection_limit",
+   "name": "the detection limit of the verdict on the target",
+   "slide": "Definition — the detection limit",
+   "formula": "detection limit = min{ k in the swept sizes : verdict( reference, current + j·s_reference ) is material for every swept j ≥ k }",
+   "citation": "Currie (1968), Analytical Chemistry 40(3), 586–593",
+   "lab": 4,
+   "function": "positive_control",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "drift_verdict",
+   "name": "the drift verdict, and the three calls it may make",
+   "slide": "Definition — the drift verdict, and the three calls it may make",
+   "formula": "act if the target is material; watch if its index is unmeasurable, or the control did not fire, or its index is above the floor; no material change only when the index is at or below the measured floor and the control fired",
+   "citation": "Saltelli et al. (2019), Environmental Modelling and Software 114, 29–39",
+   "lab": 4,
+   "function": "drift_verdict",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "classifier_two_sample_test",
+   "name": "the classifier two-sample test",
+   "slide": "Definition — the classifier two-sample test",
+   "formula": "the two samples differ when the interval around a held-out classifier's accuracy lies above chance, chance = 1/2 on balanced classes",
+   "citation": "Rabanser, Günnemann & Lipton (2019), Advances in Neural Information Processing Systems 32",
+   "lab": 4,
+   "function": "classifier_two_sample_test",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "welch_t_test",
+   "name": "Welch's t-test",
+   "slide": "Definition — Welch's t-test, and the bootstrap to the reading grain",
+   "formula": "t = ( m₁ − m₂ ) / √( s₁²/n₁ + s₂²/n₂ )",
+   "citation": "Welch (1947), Biometrika 34(1/2), 28–35",
+   "lab": 4,
+   "function": "significance_is_not_size",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "bootstrap_to_reading_grain",
+   "name": "the bootstrap that changes only the sample size",
+   "slide": "Definition — Welch's t-test, and the bootstrap to the reading grain",
+   "formula": "the same difference resampled with replacement to n readings, seed 20200122",
+   "citation": "Efron (1979), Annals of Statistics 7(1), 1–26",
+   "lab": 4,
+   "function": "significance_is_not_size",
+   "check": "verify/check_04.py"
+  },
+  {
+   "id": "cohens_d",
+   "name": "Cohen's d",
+   "slide": "Definition — Cohen's d",
+   "formula": "d = ( m₁ − m₂ ) / s_pooled, s_pooled = √( ((n₁−1)s₁² + (n₂−1)s₂²) / (n₁+n₂−2) )",
+   "citation": "Cohen (1988), Statistical Power Analysis for the Behavioral Sciences",
+   "lab": 4,
+   "function": "significance_is_not_size",
+   "check": "verify/check_04.py"
+  }
+ ]
+}
