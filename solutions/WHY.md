@@ -93,7 +93,7 @@ The honest verdict on the archive, at five bins:
 |---|---|---|---|
 | mean_speed | +2.30 SD | 2.289 | yes |
 | sd_speed | −0.47 SD | 2.975 — the largest of all | yes |
-| sd_payload | −0.47 SD | 0.422 | yes |
+| sd_payload | −0.47 SD | 0.422 | no — 0.422 against its own threshold of 0.440 |
 | human_driven | +1.24 SD | **unmeasured** — one surviving bin | no |
 | mean_payload — **the target** | −0.03 SD | 0.081 | **no** |
 
