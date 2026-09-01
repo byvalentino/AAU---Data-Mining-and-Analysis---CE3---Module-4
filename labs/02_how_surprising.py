@@ -239,8 +239,12 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
         (Yurdakul & Naranjo, 2020). Choices: resamples drawn with replacement
         from the reference, each the size of the current sample, so the null
         carries the sample sizes the comparison will really have; the median
-        rather than the mean, because the null is skewed. Slide: "Definition —
-        the index's noise floor".
+        rather than the mean, because the null is skewed; the windows are
+        resampled as if they were exchangeable, which is optimistic if they
+        are autocorrelated at the window grain the way the underlying readings
+        are at the reading grain -- printed here because it is unmeasured, not
+        because it is believed to be zero. Slide: "Definition — the index's
+        noise floor".
 
     And the threshold the verdict is read against, derived from that same null
     rather than borrowed from anybody:
