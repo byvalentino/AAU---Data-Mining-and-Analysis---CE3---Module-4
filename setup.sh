@@ -49,4 +49,4 @@ python3 data/prepare.py || {
 
 echo
 echo "Ready. Run 'make check' to see where you are."
-echo "Four labs are in labs/. Each has two to five functions to write, each marked TODO."
+echo "Four labs are in labs/. Each has two to four functions to write, each marked TODO."
