@@ -12,7 +12,7 @@ Kullback–Leibler divergence", "Definition — the symmetrised index" and
 What the check grades: your cross-entropy minus your entropy must equal your
 divergence to ten decimal places on five pairs; all three against scipy; the
 divergence infinite where the reference gave no mass; the index built on the
-reference's own quantile edges, nought against itself, above 0.25 on mean speed,
+reference's own quantile edges, nought against itself, positive on mean speed,
 and refusing the degenerate column; and a default bin count low enough that a
 no-change comparison reads as no change.
 Needs: numpy, and the constants in lab_support.

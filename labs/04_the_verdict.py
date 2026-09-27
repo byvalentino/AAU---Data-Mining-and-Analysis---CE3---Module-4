@@ -12,8 +12,9 @@ detection limit", "Definition — the drift verdict, and the three calls it may
 make", "Definition — the classifier two-sample test", "Definition — Welch's
 t-test, and the bootstrap to the reading grain" and "Definition — Cohen's d".
 What the check grades: a materiality threshold derived from Lab 2's measured
-floor rather than borrowed, per feature; mean speed material and the target not;
-the largest index belonging to sd_speed; the degenerate column reported
+floor rather than borrowed, per feature; one input material and the target not;
+the largest index belonging to whichever input your sweep puts there; the
+degenerate column reported
 unmeasured rather than nought; a positive control that fires, leaves the real
 answer untouched and reports the smallest shift it can still see; one call out of
 three with a reason built from your own measurements; a classifier two-sample
