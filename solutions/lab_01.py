@@ -34,7 +34,7 @@ def naive_interval(successes: int, trials: int, z: float = Z_95):
         p̂ ± z·√( p̂(1−p̂)/n ), with p̂ = k/n successes in n trials
         (Brown, Cai & DasGupta, 2001; Agresti & Coull, 1998). Choices: the
         ninety-five per cent level, so z = 1.96, and the normal approximation to
-        the binomial law. Slide: "Definition — the Wald interval".
+        the binomial law. Slide: "The Wald interval: definition and failure modes".
     Needs: math.sqrt
     """
     if trials == 0:
@@ -63,8 +63,7 @@ def wilson_interval(successes: int, trials: int, z: float = Z_95):
         ( p̂ + z²/2n ± z·√( p̂(1−p̂)/n + z²/4n² ) ) / ( 1 + z²/n )
         (Wilson, 1927; Brown, Cai & DasGupta, 2001). Choices: the same level and
         the same approximation; what changes is the question — which true rates
-        could have produced what was seen. Slide: "Definition — the Wilson score
-        interval".
+        could have produced what was seen. Slide: "The Wilson score interval: definition".
     Needs: math.sqrt
     """
     if trials == 0:
@@ -92,8 +91,7 @@ def coverage(interval, true_rate: float, trials: int, repeats: int = 4000,
         coverage(p, n) = (1/R)·Σ_{r=1}^{R} 1{ low_r ≤ p ≤ high_r }
         (Brown, Cai & DasGupta, 2001; Agresti & Coull, 1998). Choices: R = 4000
         samples of n = 40 at each true rate, and numpy's default_rng(20200122),
-        so the answer is the same every time. Slide: "Definition — coverage, and
-        what a half-width costs".
+        so the answer is the same every time. Slide: "Coverage: the operational definition of a confidence level".
     Needs: numpy.random.default_rng, rng.binomial
     """
     rng = np.random.default_rng(seed)
@@ -122,7 +120,7 @@ def labels_needed(half_width: float) -> int:
         (Brown, Cai & DasGupta, 2001). Choices: the worst case p = ½, where
         p(1−p) is largest; the normal approximation, so the count is itself an
         approximation; and rounding up, because labels come whole. Slide:
-        "Definition — coverage, and what a half-width costs".
+        "Sample size determination: the price of precision".
     Needs: math.ceil
     """
     if half_width <= 0:

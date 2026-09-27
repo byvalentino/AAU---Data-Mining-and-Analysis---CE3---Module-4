@@ -5,9 +5,8 @@ longer be computed — it can only be bought, by having somebody check a sample 
 hand, and the first question you will be asked is how many. You prove here that
 the interval everybody writes fails exactly where a monitor lives, at the edges,
 and that the interval that holds up there costs one more line of code.
-Where it sits: Block one — "The interval everybody writes, and where it fails",
-and the definition slides "Definition — the Wald interval", "Definition — the
-Wilson score interval" and "Definition — coverage, and what a half-width costs".
+Where it sits: Part 1, "Estimator uncertainty under label scarcity",
+and the definition slides "The Wald interval: definition and failure modes", "The Wilson score interval: definition" and "Coverage: the operational definition of a confidence level" and "Sample size determination: the price of precision".
 What the check grades: your Wilson interval against an independent implementation
 of the published formula on five cases; your Wald interval against its own
 formula, including the zero-width collapse on forty out of forty; a coverage
@@ -75,7 +74,7 @@ def naive_interval(successes: int, trials: int, z: float = Z_95):
         p̂ ± z·√( p̂(1−p̂)/n ), with p̂ = k/n successes in n trials
         (Brown, Cai & DasGupta, 2001; Agresti & Coull, 1998). Choices: the
         ninety-five per cent level, so z = 1.96, and the normal approximation to
-        the binomial law. Slide: "Definition — the Wald interval".
+        the binomial law. Slide: "The Wald interval: definition and failure modes".
     Needs: math
     """
     # TODO: the observed share, plus and minus z times its standard error.
@@ -86,12 +85,13 @@ def naive_interval(successes: int, trials: int, z: float = Z_95):
 def wilson_interval(successes: int, trials: int, z: float = Z_95):
     """The interval that holds up near the edges. Return (low, high).
 
+    The slide's code sketch calls this function wilson(k, n).
+
     Definition graded by the check:
         ( p̂ + z²/2n ± z·√( p̂(1−p̂)/n + z²/4n² ) ) / ( 1 + z²/n )
         (Wilson, 1927; Brown, Cai & DasGupta, 2001). Choices: the same level and
         the same approximation; what changes is the question — which true rates
-        could have produced what was seen. Slide: "Definition — the Wilson score
-        interval".
+        could have produced what was seen. Slide: "The Wilson score interval: definition".
     Needs: math
     """
     # TODO: the centre and half-width in the module docstring, which are that
@@ -104,6 +104,9 @@ def coverage(interval, true_rate: float, trials: int, repeats: int = 4000,
              seed: int = 20200122) -> float:
     """How often `interval` contains `true_rate`, over `repeats` samples.
 
+    The slide's code sketch writes this as coverage(p, n, R, seed), with Wilson
+    built in; here the interval is an argument, so the same function measures both.
+
     Draw `repeats` samples of `trials` observations at `true_rate`, build the
     interval from each, and return the share that contained the truth. A 95 per
     cent interval should return about 0.95.
@@ -112,8 +115,7 @@ def coverage(interval, true_rate: float, trials: int, repeats: int = 4000,
         coverage(p, n) = (1/R)·Σ_{r=1}^{R} 1{ low_r ≤ p ≤ high_r }
         (Brown, Cai & DasGupta, 2001; Agresti & Coull, 1998). Choices: R = 4000
         samples of n = 40 at each true rate, and numpy's default_rng(20200122),
-        so the answer is the same every time. Slide: "Definition — coverage, and
-        what a half-width costs".
+        so the answer is the same every time. Slide: "Coverage: the operational definition of a confidence level".
     Needs: numpy, rng.binomial
     """
     # TODO: simulate, build the interval from each sample, count.
@@ -132,7 +134,7 @@ def labels_needed(half_width: float) -> int:
         (Brown, Cai & DasGupta, 2001). Choices: the worst case p = ½, where
         p(1−p) is largest; the normal approximation, so the count is itself an
         approximation; and rounding up, because labels come whole. Slide:
-        "Definition — coverage, and what a half-width costs".
+        "Sample size determination: the price of precision".
     Needs: math
     """
     # TODO: rearrange half = z·√(0.25/n) for n, and round up.

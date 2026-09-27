@@ -149,7 +149,7 @@ def population_stability_index(reference, current, bins: int = DEFAULT_BINS) -> 
         (Jeffreys, 1946; Yurdakul & Naranjo, 2020). Choices: bin edges from the
         reference's own quantiles, opened at both ends; a floor of PSI_EPSILON
         under every share; a refusal when fewer than MINIMUM_EDGES survive.
-        Slide: "Definition — the symmetrised index".
+        Slide: "Definition - the symmetrised index (Population Stability Index)".
 
     What this reads when nothing changed at all is index_threshold's business,
     below, and the threshold Lab 4 judges by is derived from it.
@@ -217,8 +217,7 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
         resampled as if they were exchangeable, which is optimistic if they
         are autocorrelated at the window grain the way the underlying readings
         are at the reading grain -- printed here because it is unmeasured, not
-        because it is believed to be zero. Slide: "Definition — the index's
-        noise floor".
+        because it is believed to be zero. Slide: "Definition - the noise floor of the index".
 
     And the threshold the verdict is read against, derived from that same null
     rather than borrowed from anybody:
@@ -226,7 +225,7 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
         (Yurdakul & Naranjo, 2020). Choices: q = NULL_QUANTILE, R = NULL_RESAMPLES,
         the seed in the signature, and the bin count you are comparing at — a
         threshold derived at one bin count says nothing at another. Slide:
-        "Definition — the materiality threshold, derived from the floor".
+        "Definition - the materiality threshold, derived from the null".
     Needs: numpy, and the constants in lab_support
     """
     reference = np.asarray(reference, dtype=float)

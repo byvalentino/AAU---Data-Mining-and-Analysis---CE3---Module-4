@@ -4,7 +4,7 @@
   {
    "id": "wald_interval",
    "name": "the Wald interval for a proportion",
-   "slide": "Definition — the Wald interval",
+   "slide": "The Wald interval: definition and failure modes",
    "formula": "p̂ ± z·√( p̂(1−p̂)/n ), with p̂ = k/n successes in n trials",
    "citation": "Brown, Cai & DasGupta (2001), Statistical Science 16(2), 101–133",
    "lab": 1,
@@ -14,7 +14,7 @@
   {
    "id": "wilson_interval",
    "name": "the Wilson score interval",
-   "slide": "Definition — the Wilson score interval",
+   "slide": "The Wilson score interval: definition",
    "formula": "( p̂ + z²/2n ± z·√( p̂(1−p̂)/n + z²/4n² ) ) / ( 1 + z²/n )",
    "citation": "Wilson (1927), Journal of the American Statistical Association 22(158), 209–212",
    "lab": 1,
@@ -24,7 +24,7 @@
   {
    "id": "coverage",
    "name": "coverage of a nominal 95 per cent interval",
-   "slide": "Definition — coverage, and what a half-width costs",
+   "slide": "Coverage: the operational definition of a confidence level",
    "formula": "coverage(p, n) = (1/R)·Σ_{r=1}^{R} 1{ low_r ≤ p ≤ high_r }",
    "citation": "Brown, Cai & DasGupta (2001), Statistical Science 16(2), 101–133",
    "lab": 1,
@@ -34,7 +34,7 @@
   {
    "id": "labels_for_a_half_width",
    "name": "the labels a stated half-width costs",
-   "slide": "Definition — coverage, and what a half-width costs",
+   "slide": "Sample size determination: the price of precision",
    "formula": "n = ⌈ 0.25·(z/h)² ⌉ at the worst case p = ½",
    "citation": "Brown, Cai & DasGupta (2001)",
    "lab": 1,
@@ -84,7 +84,7 @@
   {
    "id": "symmetrised_index",
    "name": "the symmetrised index, Jeffreys' divergence",
-   "slide": "Definition — the symmetrised index",
+   "slide": "Definition - the symmetrised index (Population Stability Index)",
    "formula": "J(P,Q) = Σ_i ( P(i) − Q(i) )·log( P(i) / Q(i) ) = D(P‖Q) + D(Q‖P)",
    "citation": "Jeffreys (1946), Proceedings of the Royal Society A 186, 453–461",
    "lab": 2,
@@ -94,7 +94,7 @@
   {
    "id": "index_noise_floor",
    "name": "the index's noise floor at a stated bin count",
-   "slide": "Definition — the index's noise floor",
+   "slide": "Definition - the noise floor of the index",
    "formula": "floor(B) = median over R resamples of J( reference, resample of the reference ) at B bins",
    "citation": "Yurdakul & Naranjo (2020), Journal of Risk Model Validation 14(4), 89–100",
    "lab": 2,
@@ -104,7 +104,7 @@
   {
    "id": "materiality_threshold",
    "name": "the materiality threshold, derived from the measured floor",
-   "slide": "Definition — the materiality threshold, derived from the floor",
+   "slide": "Definition - the materiality threshold, derived from the null",
    "formula": "threshold(B, q) = Quantile_q { J( reference, resample of the reference ) at B bins }, over the same R resamples",
    "citation": "Yurdakul & Naranjo (2020), Journal of Risk Model Validation 14(4), 89–100",
    "lab": 2,
@@ -124,7 +124,7 @@
   {
    "id": "two_binnings",
    "name": "the two binnings inside compare_four",
-   "slide": "Definition — the two binnings inside compare_four",
+   "slide": "Four statistics, one pair of days, two sets of bin edges",
    "formula": "H and D: equal-width edges over both samples · J: the reference's quantile edges, opened at both ends",
    "citation": "Siddiqi (2006), Credit Risk Scorecards",
    "lab": 3,
@@ -134,7 +134,7 @@
   {
    "id": "standardised_shift",
    "name": "the standardised shift, Glass's Δ",
-   "slide": "Definition — the standardised shift, and the rule it is read against",
+   "slide": "The alarm rule - when a change in a feature is called material",
    "formula": "Δ = ( mean_current − mean_reference ) / s_reference, ddof = 1",
    "citation": "Glass (1976), Educational Researcher 5(10), 3–8",
    "lab": 4,
@@ -144,7 +144,7 @@
   {
    "id": "material_rule",
    "name": "the rule a shift is called material by, with a derived index bound",
-   "slide": "Definition — the standardised shift, and the rule it is read against",
+   "slide": "The alarm rule - when a change in a feature is called material",
    "formula": "material when |Δ| ≥ shift bound or J ≥ threshold(B, q); shift bound = 2.0 (fixed) or shift threshold(q) (measured)",
    "citation": "Yurdakul & Naranjo (2020)",
    "lab": 4,
@@ -174,7 +174,7 @@
   {
    "id": "drift_verdict",
    "name": "the drift verdict, and the three calls it may make",
-   "slide": "Definition — the drift verdict, and the three calls it may make",
+   "slide": "Definition - the drift decision and its three admissible calls",
    "formula": "act if the target is material; watch if its index is unmeasurable or the control did not fire; otherwise no material change, quoted with the detection limit",
    "citation": "Saltelli et al. (2019), Environmental Modelling and Software 114, 29–39",
    "lab": 4,
@@ -184,7 +184,7 @@
   {
    "id": "classifier_two_sample_test",
    "name": "the classifier two-sample test",
-   "slide": "Definition — the classifier two-sample test",
+   "slide": "The classifier two-sample test, run on the bus data",
    "formula": "the two samples differ when the interval around a held-out classifier's accuracy lies above chance, chance = 1/2 on balanced classes",
    "citation": "Rabanser, Günnemann & Lipton (2019), Advances in Neural Information Processing Systems 32",
    "lab": 4,
@@ -194,7 +194,7 @@
   {
    "id": "welch_t_test",
    "name": "Welch's t-test",
-   "slide": "Definition — Welch's t-test, and the bootstrap to the reading grain",
+   "slide": "Definition - Welch's t-test, and the bootstrap as a demonstration",
    "formula": "t = ( m₁ − m₂ ) / √( s₁²/n₁ + s₂²/n₂ )",
    "citation": "Welch (1947), Biometrika 34(1/2), 28–35",
    "lab": 4,
@@ -204,7 +204,7 @@
   {
    "id": "bootstrap_to_reading_grain",
    "name": "the bootstrap that changes only the sample size",
-   "slide": "Definition — Welch's t-test, and the bootstrap to the reading grain",
+   "slide": "Definition - Welch's t-test, and the bootstrap as a demonstration",
    "formula": "the same difference resampled with replacement to n readings, seed 20200122",
    "citation": "Efron (1979), Annals of Statistics 7(1), 1–26",
    "lab": 4,
@@ -214,7 +214,7 @@
   {
    "id": "cohens_d",
    "name": "Cohen's d",
-   "slide": "Definition — Cohen's d",
+   "slide": "Effect size - the number that decides whether a change matters",
    "formula": "d = ( m₁ − m₂ ) / s_pooled, s_pooled = √( ((n₁−1)s₁² + (n₂−1)s₂²) / (n₁+n₂−2) )",
    "citation": "Cohen (1988), Statistical Power Analysis for the Behavioral Sciences",
    "lab": 4,

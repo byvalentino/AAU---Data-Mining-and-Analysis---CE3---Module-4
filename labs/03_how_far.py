@@ -5,9 +5,8 @@ measured in nothing; an operations manager needs "the speed distribution moved b
 half a metre per second". You write the one measure that answers in the
 variable's own units, and you run all four on the same pair so that you can say
 which question each one answers.
-Where it sits: Block three — "A divergence of 0.03 is unactionable", and the
-definition slides "Definition — the Wasserstein-1 distance" and "Definition — the
-two binnings inside compare_four".
+Where it sits: Part 3, "A dimensionless statistic is not an actionable one", and the
+definition slides "Definition — the Wasserstein-1 distance" and "Four statistics, one pair of days, two sets of bin edges".
 What the check grades: your distance against scipy on four cases including
 samples of different lengths, exactly five when a sample is shifted by five,
 symmetry and nought against itself; and compare_four returning all four measures,
@@ -132,7 +131,7 @@ def compare_four(reference, current, bins: int = DEFAULT_BINS) -> dict:
         (Siddiqi, 2006; Yurdakul & Naranjo, 2020). Choices: numpy's
         histogram_bin_edges over the two samples concatenated for the entropy and
         the divergence, and Lab 2's own index — reused rather than rewritten —
-        for the third. Slide: "Definition — the two binnings inside compare_four".
+        for the third. Slide: "Four statistics, one pair of days, two sets of bin edges".
     Needs: numpy, lab_support.load_lab
     """
     # TODO: four measures, one dictionary.

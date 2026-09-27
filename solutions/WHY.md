@@ -177,7 +177,7 @@ its spread, and `human_driven` is the suspected cause. Five more are measured an
 offered — `max_speed`, `share_stopped`, `n_readings`, `mileage_delta`,
 `mean_battery` — and the check prints whatever a student added without judging
 it. Few well-chosen features beat everything available, for the arithmetic reason
-on the twenty-questions slide.
+on the multiplicity slide.
 
 `significance_is_not_size` makes the other half of the point. The same difference
 at eighty observations gives p ≈ 0.0002; resampled to forty-eight thousand it

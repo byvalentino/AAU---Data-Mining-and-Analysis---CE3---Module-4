@@ -11,7 +11,7 @@ shifts, and the results are usefully humbling: no single measure wins, and
 several widely-used ones detect very little. Read it as the answer to "which of
 these three should I use?" — the answer being that the question is wrong.
 
-## Recommended — the intervals of Block one
+## Recommended — the intervals of Part 1
 
 **Wilson, E. B. (1927). *Probable inference, the law of succession, and
 statistical inference*. Journal of the American Statistical Association 22(158),
@@ -193,7 +193,7 @@ Practical and Powerful Approach to Multiple Testing*. Journal of the Royal
 Statistical Society B 57(1), 289–300.**
 <https://doi.org/10.1111/j.2517-6161.1995.tb02031.x> — through the AAU library.
 What to do when you monitor twenty features instead of one. The procedure is
-four lines long and it is the right answer to the twenty-questions slide.
+four lines long and it is the right answer to the multiplicity slide.
 
 **Wasserstein, R. & Lazar, N. (2016). *The ASA Statement on p-Values*. The
 American Statistician 70(2), 129–133.**
@@ -236,7 +236,7 @@ traffic. Module 3 cites it for the difference between skew and shift.
 Cruz Bournazou, M. N. (2019). *Output uncertainty of dynamic growth models:
 effect of uncertain parameter estimates on model reliability*. Biochemical
 Engineering Journal 150, 107247.** <https://doi.org/10.1016/j.bej.2019.107247> —
-through the AAU library. Read the propagation section only. Block one put an
+through the AAU library. Read the propagation section only. Part 1 put an
 interval on a rate you observed. This carries the chain further than the course
 does: measurement noise becomes uncertainty on a fitted parameter, which becomes
 uncertainty on the prediction somebody acts on. It is the worked version of the
@@ -246,7 +246,7 @@ sentence "report both, and never let the first stand in for the second".
 partially observed dynamical models by exploiting the profile likelihood*.
 Bioinformatics 25(15), 1923–1929.**
 <https://doi.org/10.1093/bioinformatics/btp358> — free. Optional, and the sharpest
-counter-case to everything Block one teaches. Some parameters cannot be recovered
+counter-case to everything Part 1 teaches. Some parameters cannot be recovered
 even from perfect data — the fault is then the model, and more data never helps.
 Where that holds, any interval you compute is an artefact of the optimiser rather
 than a statement about the world. Worth knowing before you trust an interval you
@@ -270,8 +270,9 @@ are being monitored, because twenty at five per cent produces an alarm a run by
 arithmetic alone. It asks for a second measure in the variable's own units, so
 the size of the shift can be judged rather than only its surprise. And crucially
 it asks whether the **target** moved, because a shifted input with a stationary
-target is the ordinary case and the right response to it is usually to watch
-rather than retrain. The first action is to find the noise floor by simulation
+target is the ordinary case and the right response to it is usually to record
+it and look for the cause rather than retrain. The first action is to derive the
+threshold from a simulated null
 and to look for a cause in the unmonitored columns — as in this archive, where
 the one real shift is explained by the `mode` column. A very strong answer adds
 two things this module measures: an index of exactly nought is not "no change"

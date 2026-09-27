@@ -85,8 +85,7 @@ def compare_four(reference, current, bins: int = DEFAULT_BINS) -> dict:
         H and D: equal-width edges over both samples · J: the reference's quantile edges, opened at both ends
         (Siddiqi, 2006; Yurdakul & Naranjo, 2020). Choices: numpy's
         histogram_bin_edges over the two samples concatenated for the entropy and
-        the divergence, and Lab 2's own index for the third. Slide: "Definition —
-        the two binnings inside compare_four".
+        the divergence, and Lab 2's own index for the third. Slide: "Four statistics, one pair of days, two sets of bin edges".
     Needs: numpy.histogram_bin_edges, numpy.histogram, lab_support.load_lab
     """
     lab2 = load_lab(2)

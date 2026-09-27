@@ -5,10 +5,10 @@ number with a fixed floor, so that "nothing happened" is sayable. You build the
 four small objects that make it sayable, and you find out by measurement that the
 threshold everybody quotes for the fourth is a statement about somebody else's
 sample size rather than about your data.
-Where it sits: Block two — "Surprise, and the two ways to average it", and the
+Where it sits: Part 2, "Surprisal, and the two ways of averaging it", and the
 definition slides "Definition — entropy and cross-entropy", "Definition — the
-Kullback–Leibler divergence", "Definition — the symmetrised index" and
-"Definition — the index's noise floor".
+Kullback–Leibler divergence", "Definition - the symmetrised index (Population Stability Index)" and
+"Definition - the noise floor of the index".
 What the check grades: your cross-entropy minus your entropy must equal your
 divergence to ten decimal places on five pairs; all three against scipy; the
 divergence infinite where the reference gave no mass; the index built on the
@@ -191,7 +191,7 @@ def population_stability_index(reference, current, bins: int = DEFAULT_BINS) -> 
         (Jeffreys, 1946; Yurdakul & Naranjo, 2020). Choices: bin edges from the
         reference's own quantiles, opened at both ends; a floor of PSI_EPSILON
         under every share; a refusal when fewer than MINIMUM_EDGES survive.
-        Slide: "Definition — the symmetrised index".
+        Slide: "Definition - the symmetrised index (Population Stability Index)".
 
     What this reads when nothing has changed at all is the next function's
     business, and the threshold this module judges by is derived from it rather
@@ -208,6 +208,9 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
                     resamples: int = NULL_RESAMPLES,
                     quantile: float = NULL_QUANTILE, seed: int = SEED) -> dict:
     """The floor the index reads when nothing changed, and the threshold derived from it.
+
+    The slide's code sketch calls this threshold(ref, B, q, R, seed) and returns the
+    threshold alone; here it returns the dictionary described below.
 
     This is the function that stops this module borrowing a number. Credit
     scoring calls anything above 0.25 a material shift. That figure was settled
@@ -244,8 +247,7 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
         resampled as if they were exchangeable, which is optimistic if they
         are autocorrelated at the window grain the way the underlying readings
         are at the reading grain -- printed here because it is unmeasured, not
-        because it is believed to be zero. Slide: "Definition — the index's
-        noise floor".
+        because it is believed to be zero. Slide: "Definition - the noise floor of the index".
 
     And the threshold the verdict is read against, derived from that same null
     rather than borrowed from anybody:
@@ -253,7 +255,7 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
         (Yurdakul & Naranjo, 2020). Choices: q = NULL_QUANTILE, R = NULL_RESAMPLES,
         the seed in the signature, and the bin count you are comparing at — a
         threshold derived at one bin count says nothing at another. Slide:
-        "Definition — the materiality threshold, derived from the floor".
+        "Definition - the materiality threshold, derived from the null".
     Needs: numpy, and the constants in lab_support
     """
     # TODO: build the null distribution by resampling the reference against

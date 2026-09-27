@@ -5,12 +5,8 @@ between 22 and 23 January, and does it matter? The answer on the thing that
 matters is no, and this lab is where you learn to write that down and defend it
 with a threshold you derived, a control that fires, and a stated detection
 limit, which is the harder and the more common professional skill.
-Where it sits: Block four — "The verdict — two inputs moved, and one measure
-failed", and the definition slides "Definition — the standardised shift, and the
-rule it is read against", "Definition — the positive control", "Definition — the
-detection limit", "Definition — the drift verdict, and the three calls it may
-make", "Definition — the classifier two-sample test", "Definition — Welch's
-t-test, and the bootstrap to the reading grain" and "Definition — Cohen's d".
+Where it sits: Part 4, "Decision per feature: two inputs moved, one instrument failed", and the definition slides "The alarm rule - when a change in a feature is called material", "Definition — the positive control", "Definition — the
+detection limit", "Definition - the drift decision and its three admissible calls", "The classifier two-sample test, run on the bus data", "Definition - Welch's t-test, and the bootstrap as a demonstration" and "Effect size - the number that decides whether a change matters".
 What the check grades: a materiality threshold derived from Lab 2's measured
 floor rather than borrowed, per feature; the rule judged with the fixed shift
 bound of 2.0 and with the measured one, the target material under neither; the
@@ -52,9 +48,7 @@ would call drift is a vehicle going to the depot. An earlier version of this
 course's own plan did exactly that and got the sign of the target's movement
 wrong. The grain is the correction.
 
-And one thing is **not** fixed for you, deliberately: the index threshold. Block
-two spends six bullets on why credit scoring's 0.25 is a statement about
-somebody else's sample size. So this lab does not use it. Every feature's
+And one thing is **not** fixed for you, deliberately: the index threshold. The slide on the conventional threshold of 0.25 shows why it is a statement about somebody else's sample size. So this lab does not use it. Every feature's
 threshold is derived from the null you measured in Lab 2 —
 `load_lab(2).index_threshold(...)` — at the bin count you are comparing at and
 at the sample sizes you actually have. That number is on no slide, and it is not
@@ -262,7 +256,7 @@ LAB = 4
 # The check grades the five required rows and prints yours beside them without
 # judging them. Say in one line why each addition is there: a monitor watching
 # two hundred columns is mostly watching its own arithmetic, which is what the
-# twenty-questions slide is about.
+# multiplicity slide is about.
 FEATURES = list(REQUIRED_FEATURES)
 TARGET = "mean_payload"
 
@@ -287,8 +281,7 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
         Δ = ( mean_current − mean_reference ) / s_reference, ddof = 1
         (Glass, 1976). Choices: the reference period's own spread rather than a
         pooled one, and the sample standard deviation, ddof = 1 — the convention
-        Module 5 grades as well. Slide: "Definition — the standardised shift, and
-        the rule it is read against".
+        Module 5 grades as well. Slide: "The alarm rule - when a change in a feature is called material".
 
     And the rule the same slide states, with the index half of it derived rather
     than borrowed:
@@ -342,8 +335,7 @@ def drift_verdict(evidence: dict) -> tuple[str, str]:
         (Saltelli et al., 2019). Choices: the order the three clauses are read
         in; that an untested instrument's silence is "watch" rather than a null;
         that the noise floor is context and not a clause; and that the reason
-        must be built out of the evidence handed in. Slide: "Definition — the
-        drift verdict, and the three calls it may make".
+        must be built out of the evidence handed in. Slide: "Definition - the drift decision and its three admissible calls".
     Needs: nothing but the evidence you were handed
     """
     # TODO: read the three clauses in order, and write a reason out of the
@@ -361,14 +353,14 @@ def significance_is_not_size(sample_a, sample_b, readings: int = READING_COUNT,
         (Welch, 1947; Efron, 1979). Choices: Welch rather than Student, so no
         common variance is assumed; the resampling split between the two days in
         proportion to the windows each has; the seed in the signature. Slide:
-        "Definition — Welch's t-test, and the bootstrap to the reading grain".
+        "Definition - Welch's t-test, and the bootstrap as a demonstration".
 
     And the effect size, which this course grades with one pooling:
         d = ( m₁ − m₂ ) / s_pooled, s_pooled = √( ((n₁−1)s₁² + (n₂−1)s₂²) / (n₁+n₂−2) )
         (Cohen, 1988). Choices: m₁ is the second sample, so the sign points from
         the reference to today; the pooling is weighted by degrees of freedom,
         which differs from the unweighted root mean square whenever the two
-        samples differ in size — and here they do. Slide: "Definition — Cohen's d".
+        samples differ in size — and here they do. Slide: "Effect size - the number that decides whether a change matters".
     Needs: scipy, numpy
     """
     # TODO: a t-test at each grain, and Cohen's d.
@@ -387,7 +379,7 @@ def classifier_two_sample_test(reference, current, features=FEATURES,
         majority share; one half of each trains and one half is held out;
         features standardised by the training reference alone; the nearer of two
         class centroids as the rule; and Wilson's interval from Lab 1 at 95 per
-        cent. Slide: "Definition — the classifier two-sample test".
+        cent. Slide: "The classifier two-sample test, run on the bus data".
     Needs: numpy, lab_support.load_lab
     """
     # TODO: balance, split, standardise, two centroids, held-out accuracy, and

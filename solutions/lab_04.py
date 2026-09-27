@@ -85,8 +85,7 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
         Δ = ( mean_current − mean_reference ) / s_reference, ddof = 1
         (Glass, 1976). Choices: the reference period's own spread rather than a
         pooled one, and the sample standard deviation, ddof = 1 — the convention
-        Module 5 grades as well. Slide: "Definition — the standardised shift, and
-        the rule it is read against".
+        Module 5 grades as well. Slide: "The alarm rule - when a change in a feature is called material".
 
     And the rule the same slide states, with the index half of it derived rather
     than borrowed:
@@ -266,8 +265,7 @@ def drift_verdict(evidence: dict) -> tuple[str, str]:
         (Saltelli et al., 2019). Choices: the order the three clauses are read
         in; that an untested instrument's silence is "watch" rather than a null;
         that the noise floor is context and not a clause; and that the reason
-        must be built out of the evidence handed in. Slide: "Definition — the
-        drift verdict, and the three calls it may make".
+        must be built out of the evidence handed in. Slide: "Definition - the drift decision and its three admissible calls".
     Needs: nothing but the evidence you were handed
     """
     index = evidence.get("target_index")
@@ -358,7 +356,7 @@ def significance_is_not_size(sample_a, sample_b, readings: int = READING_COUNT,
         (Welch, 1947; Efron, 1979). Choices: Welch rather than Student, so no
         common variance is assumed; the resampling split between the two days in
         proportion to the windows each has; the seed in the signature. Slide:
-        "Definition — Welch's t-test, and the bootstrap to the reading grain".
+        "Definition - Welch's t-test, and the bootstrap as a demonstration".
 
     And the effect size, with the one pooling this course grades:
         d = ( m₁ − m₂ ) / s_pooled, s_pooled = √( ((n₁−1)s₁² + (n₂−1)s₂²) / (n₁+n₂−2) )
@@ -366,7 +364,7 @@ def significance_is_not_size(sample_a, sample_b, readings: int = READING_COUNT,
         the reference to today; the pooling is weighted by degrees of freedom.
         The unweighted root mean square of the two variances is a different
         number whenever the samples differ in size, and here they do — 45 windows
-        against 35, 1.021 against 0.966. Slide: "Definition — Cohen's d".
+        against 35, 1.021 against 0.966. Slide: "Effect size - the number that decides whether a change matters".
     Needs: scipy.stats.ttest_ind, numpy.random.default_rng, rng.choice, numpy.var
     """
     a = np.asarray(sample_a, dtype=float)
@@ -436,7 +434,7 @@ def classifier_two_sample_test(reference, current, features=FEATURES,
         majority share; one half of each trains and one half is held out;
         features standardised by the training reference alone; the nearer of two
         class centroids as the rule; and Wilson's interval from Lab 1 at 95 per
-        cent. Slide: "Definition — the classifier two-sample test".
+        cent. Slide: "The classifier two-sample test, run on the bus data".
     Needs: numpy.random.default_rng, numpy.mean, numpy.std, lab_support.load_lab
     """
     one = load_lab(1)
