@@ -117,10 +117,9 @@ MINIMUM_READINGS = 300
 REFERENCE_DAY, CURRENT_DAY = "2020-01-22", "2020-01-23"
 DEFAULT_BINS = 5
 PSI_EPSILON = 1e-6          # the floor under an empty bin's share; see below
-MATERIAL_SHIFT_SD = 2.0     # a stated choice of this course's
-# The index half of the rule is NOT a constant. It is derived below, per feature,
-# from the null the index produces when the reference is compared against a
-# resample of itself. BORROWED_INDEX is credit scoring's 0.25, kept only so that
+# Neither half of the material rule is a constant. Both are derived below, per
+# feature, from the null that comes back when the reference is compared against
+# a resample of itself: the index threshold and the shift threshold. BORROWED_INDEX is credit scoring's 0.25, kept only so that
 # borrowing it can be priced.
 BORROWED_INDEX = 0.25
 NULL_RESAMPLES, NULL_QUANTILE = 1000, 0.99
@@ -500,11 +499,10 @@ show(figure, "divergence_against_distance", width=1100, height=620)'''),
 
 (MARKDOWN, """### The verdict — the same table that reaches the slide
 
-Three measures per feature and one rule: material when the shift reaches 2.0
-reference standard deviations **or** the index reaches **the threshold derived
-from that feature's own null**. The shift bound is a stated choice of this
-course's. The index bound is a measurement, and there is deliberately no 0.25
-anywhere in the rule.
+Three measures per feature and one rule: material when the shift reaches **the
+shift threshold derived from that feature's own null** or the index reaches
+**the index threshold derived from the same null**. Both bounds are
+measurements. There is deliberately no 0.25 and no 2.0 anywhere in the rule.
 
 > **Definition — the symmetrised index.** `J(P,Q) = Σ_i ( P(i) − Q(i) )·log(
 > P(i) / Q(i) ) = D(P‖Q) + D(Q‖P)`, over binned shares, with edges from the
@@ -515,9 +513,11 @@ anywhere in the rule.
 
 > **Definition — the standardised shift, and the rule it is read against.**
 > `Δ = ( mean_current − mean_reference ) / s_reference, ddof = 1` (Glass, 1976),
-> and `material when |Δ| ≥ 2.0 or J ≥ threshold(B, q) derived from this feature's
-> own null` (Yurdakul & Naranjo, 2020). The reference period's own spread, not a
-> pooled one; either instrument may fire.
+> and `material when |Δ| ≥ shift threshold(q) or J ≥ threshold(B, q), both
+> derived from this feature's own null` (Yurdakul & Naranjo, 2020). The
+> shift threshold is the q point of |Δ| over resamples of the reference, drawn at
+> the current day's sample size. The reference period's own spread, not a pooled
+> one; either instrument may fire.
 
 > **Definition — the materiality threshold, derived from the floor.**
 > `threshold(B, q) = Quantile_q { J( reference, resample of the reference ) at B
@@ -567,6 +567,25 @@ def index_threshold(reference_sample, current_sample, bins=DEFAULT_BINS,
             "share_above_borrowed": float(np.mean(null >= BORROWED_INDEX)),
             "bins": bins, "resamples": resamples, "quantile": quantile, "seed": seed}
 
+def shift_threshold(reference_sample, current_size, resamples=NULL_RESAMPLES,
+                    quantile=NULL_QUANTILE, seed=SEED):
+    """The threshold of the standardised shift, measured and not borrowed.
+
+    Same null as the index: draw the current day's sample size from the reference
+    with replacement, standardise its mean against the reference's own mean and
+    spread, and take the stated quantile of the absolute values. A fixed 2.0
+    would never have fired on this archive in 1,000 comparisons in which nothing
+    changed, and would have missed human_driven, the column that explains the event.
+    """
+    spread = reference_sample.std(ddof=1)
+    if not spread:
+        return float("nan")
+    stream = np.random.default_rng(seed)
+    null = np.array([(stream.choice(reference_sample, size=current_size,
+                                    replace=True).mean() - reference_sample.mean()) / spread
+                     for _ in range(resamples)])
+    return float(np.quantile(np.abs(null), quantile))
+
 def verdict(reference_frame, current_frame, features=FEATURES, thresholds=None):
     thresholds = dict(thresholds or {})
     rows = {}
@@ -581,48 +600,52 @@ def verdict(reference_frame, current_frame, features=FEATURES, thresholds=None):
         derived = thresholds.get(feature) if measured else None
         if measured and derived is None:
             derived = index_threshold(before, after)
+        shift_limit = shift_threshold(before, len(after))
         rows[feature] = {
-            "shift": shift, "index": index, "index_measured": measured,
+            "shift": shift, "shift_threshold": shift_limit,
+            "index": index, "index_measured": measured,
             "noise_floor": derived["noise_floor"] if measured else None,
             "threshold": derived["threshold"] if measured else None,
             "wasserstein": wasserstein_distance(before, after),
-            "material": bool(abs(shift) >= MATERIAL_SHIFT_SD
+            "material": bool(abs(shift) >= shift_limit
                              or (measured and index >= derived["threshold"])),
         }
     return rows
 
 def print_verdict(rows):
-    print(f"{'feature':14}{'shift SD':>10}{'index':>13}{'floor':>13}"
+    print(f"{'feature':14}{'shift SD':>10}{'shift thr':>11}{'index':>13}{'floor':>13}"
           f"{'threshold':>13}{'material':>10}")
     for feature, row in rows.items():
         index = f"{row['index']:.3f}" if row["index_measured"] else "unmeasured"
         floor = f"{row['noise_floor']:.3f}" if row["index_measured"] else "unmeasured"
         threshold = f"{row['threshold']:.3f}" if row["index_measured"] else "unmeasured"
         marker = "  <- target" if feature == TARGET else ""
-        print(f"{feature:14}{row['shift']:+10.2f}{index:>13}{floor:>13}"
+        print(f"{feature:14}{row['shift']:+10.2f}{row['shift_threshold']:11.3f}{index:>13}{floor:>13}"
               f"{threshold:>13}{str(row['material']):>10}{marker}")
 
 rows = verdict(reference, current)
 print_verdict(rows)
 material = [f for f, r in rows.items() if r["material"]]
 borrowed = [f for f, r in rows.items()
-            if abs(r["shift"]) >= MATERIAL_SHIFT_SD
+            if abs(r["shift"]) >= r["shift_threshold"]
             or (r["index_measured"] and r["index"] >= BORROWED_INDEX)]
 largest = max((f for f, r in rows.items() if r["index_measured"]),
               key=lambda f: rows[f]["index"])
 print(f"\\n{len(material)} of {len(FEATURES)} material: {', '.join(material)}")
 print(f"with banking's {BORROWED_INDEX} instead it would be {len(borrowed)}: "
       f"{', '.join(borrowed)}")
-print(f"the extra alarm is {', '.join(sorted(set(borrowed) - set(material)))}, whose "
-      f"index {rows['sd_payload']['index']:.3f} sits just under its own threshold "
-      f"of {rows['sd_payload']['threshold']:.3f}")
+print(f"sd_payload is material through its shift, {abs(rows['sd_payload']['shift']):.2f} "
+      f"against {rows['sd_payload']['shift_threshold']:.3f}. Its index "
+      f"{rows['sd_payload']['index']:.3f} sits just under its own threshold of "
+      f"{rows['sd_payload']['threshold']:.3f}, where banking's {BORROWED_INDEX} would have "
+      f"fired on the index instead: same call, different reason.")
 print(f"largest index of all: {largest}, not mean_speed. Two measures, two orderings.")
 print(f"\\nand the target: index {rows[TARGET]['index']:.3f} against its own measured "
       f"noise floor of {rows[TARGET]['noise_floor']:.3f} -- BELOW the floor, so the "
       f"instrument cannot tell it apart from a day on which nothing happened.")'''),
 
-(MARKDOWN, """One input moved a great deal. The target moved three hundredths of a standard
-deviation.
+(MARKDOWN, """Four inputs raise an alarm, and the largest moved more than two reference
+standard deviations. The target moved three hundredths of a standard deviation.
 
 A monitor watching inputs would have fired. A monitor watching the target would
 not. **Both would have been right** — and the operator's question is not "did
@@ -630,7 +653,9 @@ anything change?" but "must we do anything?"
 
 Note the row the index could not measure at all. `human_driven` is nought in
 most reference windows, so its quantile edges collapse to one bin and the index
-reads exactly nought — for the column that explains the whole event.
+has no reading — for the column that explains the whole event. The measured
+shift threshold is what catches it: 1.24 reference standard deviations against
+0.458. A fixed 2.0 would have missed it.
 
 ### The cause is in a column nobody was watching"""),
 
@@ -683,7 +708,8 @@ def inject(size):
 
 control = inject(INJECTED_SHIFT_SD)
 print(f"injected {INJECTED_SHIFT_SD} reference standard deviations into the target")
-print(f"  shift     {control['shift']:+.2f} SD")
+print(f"  shift     {control['shift']:+.2f} SD against a shift threshold of "
+      f"{control['shift_threshold']:.3f}")
 print(f"  index     {control['index']:.3f}")
 print(f"  threshold {control['threshold']:.3f}")
 print(f"  material  {control['material']}")
@@ -696,10 +722,14 @@ print(f"\\nsweep {DETECTION_SIZES[0]} to {DETECTION_SIZES[-1]} SD in steps of 0.
 print(f"  first firing at        {first} SD -- and it falls back at the next size")
 print(f"  material from          {limit} SD upwards, and at every larger size")
 print(f"  detection limit        {limit} reference SD = {limit * spread:.1f} kilograms")
-print("\\nThe shift rule does not fire at 1.5, so what fired is the index. The same")
-print("code, on the same grain, detects movement when there is some -- and now we")
-print("can also say what it would have missed: anything under "
-      f"{limit * spread:.1f} kilograms of mean payload per five-minute window.")
+shift_first = next(size for size, row in zip(DETECTION_SIZES, swept)
+                   if abs(row["shift"]) >= row["shift_threshold"])
+index_first = next(size for size, row in zip(DETECTION_SIZES, swept)
+                   if row["index_measured"] and row["index"] >= row["threshold"])
+print(f"\\nAt 1.5 both halves of the rule fire. The index half first fires at {index_first} SD")
+print(f"and the shift half at {shift_first} SD. The same code, on the same grain, detects")
+print("movement when there is some, and now we can also say what it would have missed:")
+print(f"anything under {limit * spread:.1f} kilograms of mean payload per five-minute window.")
 
 curve = go.Figure()
 curve.add_scatter(x=DETECTION_SIZES, y=[row["index"] for row in swept],

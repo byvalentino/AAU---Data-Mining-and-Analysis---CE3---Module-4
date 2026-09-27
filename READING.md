@@ -85,6 +85,12 @@ entre les valeurs moyennes*. Acta Mathematica 30, 175–193.**
 history rather than the technique: the inequality the module opens on, in the
 paper that first stated it in this generality.
 
+**Rich, D. (2020). *Jensen's Inequality*. Mutual Information, video, seven
+minutes.** <https://youtu.be/u0_X2hX6DWE> — free. The three pictures after the
+Jensen card in block two follow its naming of the two routes and its
+tangent-line argument. Watch it before the session; the slides show the proof
+in three moves and the video says the same thing in seven minutes.
+
 ## Recommended — the index, and its borrowed thresholds
 
 **Jeffreys, H. (1946). *An invariant form for the prior probability in
@@ -215,6 +221,14 @@ and ranking inputs is not the same as saying how far the answer should be
 trusted.
 
 > Nothing licensed is redistributed in this repository.
+
+**Storkey, A. (2009). *When Training and Test Sets Are Different: Characterizing
+Learning Transfer*. In Quiñonero-Candela, J., Sugiyama, M., Schwaighofer, A. &
+Lawrence, N. D. (eds), *Dataset Shift in Machine Learning*, ch. 1, 3–28. MIT
+Press.** Through the library. The vocabulary this module measures with: §1.3 names
+six forms of shift, §1.8 is domain shift, and §1.11 is one page on why a few
+labels from the current day are worth more than any amount of unlabelled
+traffic. Module 3 cites it for the difference between skew and shift.
 
 ## Further afield, and worth it
 

@@ -12,8 +12,9 @@ detection limit", "Definition — the drift verdict, and the three calls it may
 make", "Definition — the classifier two-sample test", "Definition — Welch's
 t-test, and the bootstrap to the reading grain" and "Definition — Cohen's d".
 What the check grades: a materiality threshold derived from Lab 2's measured
-floor rather than borrowed, per feature; one input material and the target not;
-the largest index belonging to whichever input your sweep puts there; the
+floor rather than borrowed, per feature; the rule judged with the fixed shift
+bound of 2.0 and with the measured one, the target material under neither; the
+largest index belonging to whichever input your sweep puts there; the
 degenerate column reported
 unmeasured rather than nought; a positive control that fires, leaves the real
 answer untouched and reports the smallest shift it can still see; one call out of
@@ -73,13 +74,26 @@ the same for two columns.
                                      nothing changed, from Lab 2
         index_threshold              the threshold derived from that same null
         wasserstein                  from Lab 3
-        material                     True or False
+        shift_threshold              the measured shift bound, see below
+        material                     True or False, with the measured bound
+        shift_bound_fixed            MATERIAL_SHIFT_SD, the textbook 2.0
+        material_fixed               True or False, with the fixed bound
 
-    Call it material when the shift is at least MATERIAL_SHIFT_SD reference
-    standard deviations OR the index was measured and is at least the threshold
-    **you derived for that feature**. Two independent instruments agreeing is
-    worth more than either alone, and requiring both would miss a shift only one
-    of them is shaped to see.
+    The rule is judged twice, once with each shift bound, because the deck
+    teaches both. Call a feature material when its absolute shift is at least
+    the bound, OR the index was measured and is at least the threshold **you
+    derived for that feature**. Either instrument may fire: requiring both
+    would miss a shift only one of them is shaped to see.
+
+        fixed bound      MATERIAL_SHIFT_SD = 2.0 reference standard deviations,
+                         the textbook bound. It carries no false-alarm rate.
+        measured bound   lab_support.shift_threshold(reference values, number
+                         of current windows): the 0.99 point of the shift over
+                         resamples of the reference, the same null as the index
+                         threshold. Record it under "shift_threshold".
+
+    On this archive the two rules disagree on two input features. Find them,
+    and find which of the two is the cause of the whole event.
 
     `thresholds` is an optional mapping from a feature name to the dictionary
     `index_threshold()` returned for it, so that a caller who has already
@@ -103,7 +117,9 @@ the same for two columns.
     Add injected_shift_sd * (the reference day's standard deviation of the
     target) to every current value of the target, put that through your
     **unchanged** verdict, and return the target's row plus the size you
-    injected under the key "injected_shift_sd". It must come back material.
+    injected under the key "injected_shift_sd". It must come back material
+    under both rules, and under the fixed one it must be the index that fired:
+    the injected shift stays below MATERIAL_SHIFT_SD.
 
     Then sweep. Walk every size in `sizes`, inject it the same way, and record
     whether the verdict calls it material. Report:
@@ -129,24 +145,48 @@ the same for two columns.
 3. drift_verdict(evidence)
 
     Return (call, reason). `call` is one of "act", "watch", "no material
-    change". `evidence` is what you measured, handed to you as a dictionary.
+    change". `evidence` is what you measured, handed to you as a dictionary
+    with these keys:
+
+        target_index            the target's index, or None if unmeasured
+        target_index_measured   True or False
+        standardised_shift      the target's shift, in reference SD
+        shift_threshold         the target's shift threshold
+        noise_floor             the median of the target's null
+        index_threshold         the 0.99 point of the same null
+        control_index           the index the positive control produced
+        detection_limit         your sweep's limit, in reference SD
+        material_features       the features your verdict called material
+        material_count          how many of them
+        features_watched        how many features were judged
 
     The rule, in the order it is read:
 
-        the target is material                     -> "act"
+        the target is material: its absolute shift is at least
+        evidence["shift_threshold"], or its measured index is
+        at least evidence["index_threshold"]       -> "act"
         its index could not be measured at all     -> "watch"
-        the positive control did not fire          -> "watch"
-        its index is at or below the noise floor   -> "no material change"
-        anything else                              -> "watch"
+        the positive control did not fire: its
+        control_index is below index_threshold     -> "watch"
+        anything else                              -> "no material change"
 
     The third line is the one people leave out. A quiet detector nobody has
     tested is not evidence of quiet; it is evidence of nothing, and "watch" is
     what you owe the operator until the control fires.
 
+    The noise floor is not a line in the rule. It is the median of the null, so
+    half of all days on which nothing changed read above it by chance, and a
+    rule that said "watch" there would say it on every second quiet day. Report
+    it as context. What limits a "no material change" is the detection limit:
+    the call means "no change as large as the limit", and nothing smaller.
+
     The reason is graded, not read for style. It has to be at least forty
     characters, every number in it has to be a number in the evidence you were
-    handed, and it has to name at least two of the quantities it weighed. A
-    sentence off a slide will fail, and that is the point of the exercise.
+    handed (rounding is fine: 3.2 for 3.217; a date or a percentage is not in
+    the evidence), and it has to name at least two of the quantities it
+    weighed. On
+    "no material change" it must also quote the detection limit. A sentence off
+    a slide will fail, and that is the point of the exercise.
 
 4. significance_is_not_size(sample_a, sample_b, readings, seed)
 
@@ -204,7 +244,7 @@ from scipy.stats import ttest_ind
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from lab_support import (CANDIDATE_FEATURES, DETECTION_SIZES,        # noqa: E402
                          DegenerateReference, NotSolved, READING_COUNT,
-                         REQUIRED_FEATURES, SEED, load_lab)
+                         REQUIRED_FEATURES, SEED, load_lab, shift_threshold)
 
 LAB = 4
 
@@ -226,16 +266,17 @@ LAB = 4
 FEATURES = list(REQUIRED_FEATURES)
 TARGET = "mean_payload"
 
-# The shift half of the material rule, and it is a choice of this course's
-# rather than a measurement: two reference standard deviations. The index half
-# is NOT a constant here and there is no MATERIAL_INDEX to read. It is derived,
-# per feature, from the null Lab 2 measures.
+# Two shift bounds, judged side by side. The fixed one is the textbook bound of
+# two reference standard deviations; the measured one is
+# lab_support.shift_threshold(), derived per feature from the same null as the
+# index threshold. The index half is always the index_threshold() you wrote in
+# Lab 2: there is no MATERIAL_INDEX to read.
 MATERIAL_SHIFT_SD = 2.0
 
-# The size the control injects when nobody asks for another. Comfortably above
-# the measured noise floor and comfortably below MATERIAL_SHIFT_SD, so that what
-# fires is the index rather than the shift rule -- which is the instrument the
-# control is there to test. The sweep says what this single size cannot.
+# The size the control injects when nobody asks for another, and the top of the
+# swept grid. It is below MATERIAL_SHIFT_SD, so under the fixed rule only the
+# index can fire: the control then tests the instrument whose silence on the
+# target you rely on. Under the measured rule the shift fires as well.
 INJECTED_SHIFT_SD = 1.5
 
 
@@ -251,9 +292,10 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
 
     And the rule the same slide states, with the index half of it derived rather
     than borrowed:
-        material when |Δ| ≥ 2.0 or J ≥ threshold(B, q) derived from this feature's own null
-        (Yurdakul & Naranjo, 2020). Choices: the shift bound is this course's,
-        the index bound is measured per feature at the bin count in use; either
+        material when |Δ| ≥ shift bound or J ≥ threshold(B, q); shift bound = 2.0 (fixed) or shift threshold(q) (measured)
+        (Yurdakul & Naranjo, 2020). Choices: the rule is judged twice, once with
+        the textbook bound of 2.0 and once with the q = 0.99 point of the
+        feature's own null; the index threshold is always measured; either
         instrument may fire; a refused index leaves the shift to decide alone.
     Needs: numpy, lab_support.load_lab, lab_support.DegenerateReference
     """
@@ -270,8 +312,8 @@ def positive_control(reference, current,
 
     Definition graded by the check:
         verdict( reference, current + k·s_reference ) must return material, with k stated beside the result
-        (Saltelli et al., 2019). Choices: k = INJECTED_SHIFT_SD, deliberately
-        below the shift threshold so that what fires is the index; a copy of the
+        (Saltelli et al., 2019). Choices: k = INJECTED_SHIFT_SD, the top of the
+        swept grid; a copy of the
         current frame, so the real answer is left exactly as it was. Slide:
         "Definition — the positive control".
 
@@ -296,14 +338,15 @@ def drift_verdict(evidence: dict) -> tuple[str, str]:
     """One call out of three, and the reason you would defend it with.
 
     Definition graded by the check:
-        act if the target is material; watch if its index is unmeasurable, or the control did not fire, or its index is above the floor; no material change only when the index is at or below the measured floor and the control fired
-        (Saltelli et al., 2019). Choices: the order the four clauses are read
+        act if the target is material; watch if its index is unmeasurable or the control did not fire; otherwise no material change, quoted with the detection limit
+        (Saltelli et al., 2019). Choices: the order the three clauses are read
         in; that an untested instrument's silence is "watch" rather than a null;
-        and that the reason must be built out of the evidence handed in. Slide:
-        "Definition — the drift verdict, and the three calls it may make".
+        that the noise floor is context and not a clause; and that the reason
+        must be built out of the evidence handed in. Slide: "Definition — the
+        drift verdict, and the three calls it may make".
     Needs: nothing but the evidence you were handed
     """
-    # TODO: read the four clauses in order, and write a reason out of the
+    # TODO: read the three clauses in order, and write a reason out of the
     # numbers in `evidence` -- not out of a slide.
     raise NotSolved("drift_verdict(evidence) still raises instead of returning "
                     "(call, reason)")

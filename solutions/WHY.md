@@ -89,22 +89,27 @@ moves completely, because the geometry is what changed.
 
 The honest verdict on the archive, at five bins:
 
-| feature | shift | index | material |
-|---|---|---|---|
-| mean_speed | +2.30 SD | 2.289 | yes |
-| sd_speed | −0.47 SD | 2.975 — the largest of all | yes |
-| sd_payload | −0.47 SD | 0.422 | no — 0.422 against its own threshold of 0.440 |
-| human_driven | +1.24 SD | **unmeasured** — one surviving bin | no |
-| mean_payload — **the target** | −0.03 SD | 0.081 | **no** |
+| feature | shift | measured shift bound | index | material, fixed 2.0 | material, measured |
+|---|---|---|---|---|---|
+| mean_speed | +2.30 SD | 0.394 | 2.289 | yes | yes |
+| sd_speed | −0.47 SD | 0.405 | 2.975 — the largest of all | yes | yes |
+| sd_payload | −0.47 SD | 0.416 | 0.422 | no | yes |
+| human_driven | +1.24 SD | 0.458 | **unmeasured** — one surviving bin | no | yes |
+| mean_payload — **the target** | −0.03 SD | 0.431 | 0.081 | **no** | **no** |
 
-Two inputs are material, and *which* two is decided by a threshold nobody
-borrowed. Lab 2's `index_threshold()` compares the reference against a resample
-of itself a thousand times and takes the 0.99 quantile of what comes back: 1.354
-on `mean_speed`, 0.431 on `sd_speed`, 0.440 on `sd_payload`, 0.465 on the target.
-Four columns, four thresholds, one archive and one bin count. Credit scoring's
-0.25 would have made three features material instead of two, the extra one being
-`sd_payload` at 0.422 against its own 0.440 — a call that close is exactly what a
-borrowed threshold hides.
+The index threshold is always measured. Lab 2's `index_threshold()` compares the
+reference against a resample of itself a thousand times and takes the 0.99
+quantile of what comes back: 1.354 on `mean_speed`, 0.431 on `sd_speed`, 0.440 on
+`sd_payload`, 0.465 on the target. Credit scoring's 0.25 would have made
+`sd_payload` material by its index, at 0.422 against its own 0.440 — a call that
+close is exactly what a borrowed threshold hides.
+
+The shift is judged twice. With the textbook bound of 2.0, two inputs are
+material, and that is the table on the slides. With the bound measured from the
+same null, four are. The difference is the reason to learn both: `human_driven`
+is the cause of the whole event, its index cannot be computed, and its shift of
++1.24 is short of 2.0. The fixed rule is blind to it; only the measured bound
+sees it. The target is quiet under both.
 
 The two measures rank the features differently — the largest index belongs to
 `sd_speed` and the largest shift to `mean_speed`, and both are right about their
@@ -126,9 +131,10 @@ nothing happened".
 
 `positive_control` is what makes that conclusion worth anything. Inject 1.5
 reference standard deviations into the target, re-run the **unchanged** verdict,
-and the index reports 8.221 against a derived threshold of 0.465. The shift rule
-does not fire at 1.5, so what fired is the index — which is the instrument the
-null result depends on.
+and the index reports 8.221 against a derived threshold of 0.465. At 1.5 both
+halves of the rule fire: the shift, 1.47 against its measured threshold of
+0.431, and the index. The sweep shows which fires first at each size: the index
+from 0.40, the shift from 0.50.
 
 Then it sweeps, because a control at one size establishes one size. Walking 0.00
 to 1.50 in steps of 0.05, the verdict is material from **0.40** upwards and stays
@@ -139,11 +145,13 @@ sweep — the null is built from the reference alone, and holding it fixed is wh
 at 0.20: at thirty-five current windows a handful crossing a quantile edge moves
 it a long way, so the limit is the sustained crossing rather than the first one.
 
-`drift_verdict` turns all of that into one instruction. Four clauses in order: a
+`drift_verdict` turns all of that into one instruction. Three clauses in order: a
 material target is "act"; an unmeasurable index is "watch"; a control that did
 not fire is "watch", because silence from an untested instrument is not evidence;
-and only an index at or below the measured floor, with the control fired, earns
-"no material change". The third clause is the one people leave out, and the check
+everything else is "no material change", and its reason quotes the detection
+limit. The noise floor is not a clause: it is the median of the null, so half of
+all quiet days read above it, and a clause on it made "watch" the call on every
+second day without change. It was one until 27 September 2026. The third clause is the one people leave out, and the check
 hands the function six situations whose right answers differ so that leaving it
 out is visible.
 

@@ -3,7 +3,7 @@
 the control and the detection limit behind it, the call, and the closing test."""
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import run, not_ready, grade_reason, explain            # noqa: E402
+from _harness import run, not_ready, grade_reason, explain, numbers_in  # noqa: E402
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 try:
     import numpy as np                                               # noqa: E402
@@ -20,8 +20,10 @@ DEGENERATE = "human_driven"
 # measured is printed below, unjudged.
 REQUIRED = ("mean_speed", "sd_speed", "sd_payload", "human_driven", "mean_payload")
 
-MEASURES = ("shift_in_reference_sd", "population_stability_index", "wasserstein",
-            "material", "index_measured", "noise_floor", "index_threshold")
+MEASURES = ("shift_in_reference_sd", "shift_threshold",
+            "population_stability_index", "wasserstein",
+            "material", "index_measured", "noise_floor", "index_threshold",
+            "shift_bound_fixed", "material_fixed")
 
 # The six situations drift_verdict has to tell apart, and the call each one
 # deserves. Four of them would be answered "no material change" by anybody
@@ -116,16 +118,17 @@ def body(lab):
         "column, and the thing the model predicts did not move. Learning to write "
         "'no material change' and defend it is the harder skill.")
 
-    # The module's strongest sentence, and it is a measurement rather than a
-    # slogan: the target's index sits below the floor its own instrument reads
-    # when nothing has changed at all.
+    # A measurement slide 64 states: the target's index sits below the median its
+    # own instrument reads when nothing has changed. It is graded as a fact about
+    # this archive, not as evidence stronger than the threshold -- half of all
+    # quiet days fall below a median by chance (revised 27 September 2026).
     assert target["population_stability_index"] < target["noise_floor"], (
         f"your verdict has the target's index at "
         f"{target['population_stability_index']:.4f} and its measured noise floor at "
-        f"{target['noise_floor']:.4f}. On this archive the index is below the floor — "
-        "the instrument cannot tell the target apart from a day on which nothing "
-        "happened, which is a stronger statement than 'below the threshold' and it is "
-        "the sentence this module exists to teach you to write.")
+        f"{target['noise_floor']:.4f}. On this archive the index is below the floor: "
+        "the instrument cannot tell the target apart from a typical day on which "
+        "nothing happened. If yours is above it, check that the floor is the median "
+        "of the null at the size of the current sample.")
 
     # The two measures rank the features differently, and both are right about
     # their own question. The largest shift is mean_speed; the largest index
@@ -143,11 +146,48 @@ def body(lab):
 
     material = [name for name in REQUIRED if results[name]["material"]]
     assert lab.TARGET not in material, "the target must not be among the material shifts"
-    assert len(material) < len(REQUIRED) - 1, (
+    # With the measured shift bound, the 0.99 point of each feature's own null
+    # (added 20 September 2026), the four input features are material on this
+    # archive and the target is not. The fixed 2.0 is graded separately below.
+    assert sorted(material) == sorted(name for name in REQUIRED if name != lab.TARGET), (
         f"your verdict calls {len(material)} of the {len(REQUIRED)} required features "
-        f"material: {material}. At least two should not be — a detector that fires on "
-        "almost everything is not a detector, and on this data the target sits well "
-        "inside the noise.")
+        f"material: {material}. With both thresholds measured from each feature's own "
+        "null, the four input features are material on this archive and the target is "
+        "not. If yours differs, check that 'material' compares the shift with "
+        "lab_support.shift_threshold(reference values, number of current windows); "
+        "the fixed 2.0 belongs to 'material_fixed'.")
+    for name in REQUIRED:
+        measured_limit = results[name]["shift_threshold"]
+        assert 0.3 < measured_limit < 0.6, (
+            f"the shift threshold you report for {name} is {measured_limit}. Measured "
+            "from 1,000 resamples of 35 windows it lies near 2.576 / sqrt(35) = 0.435. "
+            "2.0 is the fixed bound, which belongs under 'shift_bound_fixed'.")
+
+    # The same rule with the textbook bound of 2.0, which the deck's table and
+    # figures show (slides 58, 62, 63): two inputs material, the target not.
+    fixed = [name for name in REQUIRED if results[name]["material_fixed"]]
+    for name in REQUIRED:
+        assert results[name]["shift_bound_fixed"] == 2.0, (
+            f"the fixed shift bound you report for {name} is "
+            f"{results[name]['shift_bound_fixed']!r}; it is the textbook 2.0 reference "
+            "standard deviations, MATERIAL_SHIFT_SD.")
+    assert sorted(fixed) == ["mean_speed", "sd_speed"], (
+        f"with the fixed bound of 2.0 your verdict calls {fixed} material. On this "
+        "archive it is mean_speed, by both statistics, and sd_speed, by the index "
+        "alone. If yours differs, check that the fixed rule keeps the measured index "
+        "threshold and only swaps the shift bound.")
+
+    # Why the module teaches both. The share driven manually is the cause of the
+    # event, its index cannot be computed, and its shift of +1.24 sits under 2.0:
+    # the fixed rule is blind to it and only the measured bound sees it.
+    cause = results[DEGENERATE]
+    assert cause["material"] is True and cause["material_fixed"] is False, (
+        f"on {DEGENERATE} your verdict reports material={cause['material']} with the "
+        f"measured bound and material={cause['material_fixed']} with the fixed one. Its "
+        "index cannot be computed, so the shift decides alone: "
+        f"{cause['shift_in_reference_sd']:+.2f} is past the measured bound of "
+        f"{cause['shift_threshold']:.3f} and short of 2.0. The column that explains the "
+        "whole event is seen by one rule only.")
 
     # The degenerate column, reported as unmeasured rather than as unmoved. Its
     # index is exactly 0.0 for every correct implementation of the arithmetic,
@@ -195,6 +235,13 @@ def body(lab):
         f"{control['population_stability_index']}. Then the null result on the real "
         "target says nothing about the world — it only says your detector does not "
         "detect. Fix the control before you believe the verdict.")
+    assert control["material_fixed"] is True and abs(
+        control["shift_in_reference_sd"]) < 2.0, (
+        f"under the fixed rule your control reports material={control['material_fixed']} "
+        f"at a shift of {control['shift_in_reference_sd']:+.2f}, after injecting "
+        f"{control['injected_shift_sd']}. The control must stay under 2.0, so that under "
+        "the fixed rule the shift cannot fire and the index must: that is what makes it "
+        "a test of the index.")
     assert control["population_stability_index"] > control["index_threshold"], (
         f"the injected shift gave an index of {control['population_stability_index']}, "
         f"which is not above the threshold your own verdict judges by "
@@ -283,6 +330,7 @@ def body(lab):
         "target_index": target["population_stability_index"],
         "target_index_measured": target["index_measured"],
         "standardised_shift": target["shift_in_reference_sd"],
+        "shift_threshold": target["shift_threshold"],
         "noise_floor": target["noise_floor"],
         "index_threshold": target["index_threshold"],
         "control_index": control["population_stability_index"],
@@ -313,9 +361,11 @@ def body(lab):
                       noise_floor=None, index_threshold=None), "watch"),
         # the instrument was never shown to work
         ("the positive control silent", moved_target(control_index=0.12), "watch"),
-        # measurable movement that is not distinguishable from noise
+        # above the median of the null and below its 0.99 point: a quiet day like
+        # half of all quiet days. Until 27 September 2026 this case was "watch",
+        # which made "watch" the call on about every second day without change.
         ("the index between the floor and the threshold",
-         moved_target(target_index=0.31), "watch"),
+         moved_target(target_index=0.31), "no material change"),
     ]
 
     seen_calls, reasons = set(), {}
@@ -332,11 +382,11 @@ def body(lab):
         assert call == expected, explain(
             VERDICT_KEY + ":call",
             f"on {name} you called {call!r}; the defensible call is {expected!r}",
-            "Read the four clauses in the order the stub gives them: a material "
+            "Read the three clauses in the order the stub gives them: a material "
             "target is 'act'; an index that could not be measured is 'watch'; a "
             "control that did not fire is 'watch', because silence from an untested "
-            "instrument is not evidence; and only an index at or below the measured "
-            "floor, with the control fired, earns 'no material change'.")
+            "instrument is not evidence; everything else is 'no material change'. "
+            "The noise floor is not a clause: half of all quiet days read above it.")
         seen_calls.add(call)
         reasons[name] = reason
 
@@ -356,6 +406,17 @@ def body(lab):
         "moved past its own threshold. A reason is a report of the evidence handed "
         "in; if it does not change when the evidence does, it is a sentence rather "
         "than an argument.")
+
+    # "No material change" means "no change as large as the detection limit", and
+    # nothing smaller (slide 73). A reason that omits the limit claims more than
+    # was measured, so both quiet cases must quote it.
+    for name in ("the archive as measured", "the index between the floor and the threshold"):
+        quoted = numbers_in(reasons[name])
+        assert any(abs(number - limit) <= 5e-3 * max(1.0, abs(limit)) for number in quoted), (
+            f"on {name} your reason for 'no material change' does not quote the "
+            f"detection limit, {limit}. Without it, 'no material change' also covers "
+            "shifts your sweep never showed it could see. Quote the limit from the "
+            "evidence.")
 
     # ------------------------------------------------------------------
     # Significance is not size.

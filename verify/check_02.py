@@ -107,9 +107,10 @@ def body(lab):
     forward = lab.population_stability_index(speed_before, speed_after)
     backward = lab.population_stability_index(speed_after, speed_before)
     assert forward >= 0, f"the index must not be negative; got {forward}"
-    assert forward > 0.25, (
-        f"mean speed between the two days gave an index of {forward:.3f}. This is the "
-        "one feature that genuinely moved — expected well above the 0.25 threshold.")
+    assert forward > 0, (
+        f"mean speed between the two days gave an index of {forward:.3f}. It is the "
+        "one feature that genuinely moved, so its index cannot be nought. Whether it "
+        "is large enough is graded below, against its own derived threshold.")
 
     payload_index = lab.population_stability_index(
         reference["mean_payload"].dropna().to_numpy(),
@@ -237,6 +238,16 @@ def body(lab):
         "that moved by three hundredths of a standard deviation. That is a false alarm "
         "on the null, and at ten bins on this archive it is what happens. The "
         "arithmetic is not the problem — the bin count is.")
+
+    # And the feature that did move must cross its own threshold. This used to be
+    # graded against credit scoring's 0.25, the one number the deck says nothing
+    # in this module is judged by (revised 27 September 2026).
+    speed_threshold = lab.index_threshold(speed_before, speed_after)["threshold"]
+    assert forward >= speed_threshold, (
+        f"mean speed gave an index of {forward:.3f} against the threshold of "
+        f"{speed_threshold:.3f} derived from its own null. It is the one feature that "
+        "genuinely moved, so it must cross it. If it does not, check that the edges "
+        "come from the reference's quantiles.")
 
     # The refusal. human_driven is nought in 39 of the 45 reference windows, so
     # its quantile edges collapse to one bin and every correct implementation of

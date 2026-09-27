@@ -244,8 +244,15 @@ def grade_reason(reason, evidence: dict, key: str, minimum_keys: int = 2,
         "the reason contains no numbers at all",
         "A verdict without a magnitude is an opinion. Quote the measurements you "
         "made -- the ones in the evidence you were handed.")
-    for number in written:
-        assert any(abs(number - value) <= tolerance * max(1.0, abs(value))
+    # A number rounded honestly passes: 3.2 for 3.217 is the same measurement
+    # quoted to one decimal. The allowance is half a unit in the last digit the
+    # student wrote, or the relative tolerance, whichever is larger.
+    pieces = _NUMBER.findall(text)
+    for number, piece in zip(written, pieces):
+        decimals = len(_re.split(r"[.,]", piece.split("e")[0].split("E")[0])[1]) \
+            if _re.search(r"[.,]", piece) else 0
+        rounding = 0.5 * 10 ** -decimals + 1e-12
+        assert any(abs(number - value) <= max(tolerance * max(1.0, abs(value)), rounding)
                    for value in values), explain(
             key + ":unmatched",
             f"the reason quotes {number:g}, which is not any value in the evidence",

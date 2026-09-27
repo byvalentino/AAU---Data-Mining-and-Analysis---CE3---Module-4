@@ -17,7 +17,7 @@ from scipy.stats import ttest_ind
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from lab_support import (CANDIDATE_FEATURES, DETECTION_SIZES,        # noqa: E402
                          DegenerateReference, READING_COUNT,
-                         REQUIRED_FEATURES, SEED, load_lab)
+                         REQUIRED_FEATURES, SEED, load_lab, shift_threshold)
 
 LAB = 4
 
@@ -29,10 +29,17 @@ LAB = 4
 FEATURES = list(REQUIRED_FEATURES)
 TARGET = "mean_payload"
 
-# The shift half of the rule, and a choice rather than a measurement. There is
-# deliberately no MATERIAL_INDEX beside it: the index half is derived from the
-# null Lab 2 measures, per feature, at the bin count in use.
+# Two shift bounds, judged side by side (slides 55 to 63). The fixed one is the
+# textbook bound of two reference standard deviations: it carries no stated
+# false-alarm rate. The measured one is lab_support.shift_threshold(), the 0.99
+# point of each feature's own null. The index half is always measured, by Lab
+# 2's index_threshold(); there is no MATERIAL_INDEX. On this archive the two
+# rules differ on two inputs, and one of them is the cause of the event.
 MATERIAL_SHIFT_SD = 2.0
+
+# Below MATERIAL_SHIFT_SD, so under the fixed rule only the index can fire and
+# the control tests the instrument whose silence on the target we rely on
+# (slide 68). Under the measured rule the shift fires as well.
 INJECTED_SHIFT_SD = 1.5
 
 
@@ -45,14 +52,16 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
         mean_speed      moved +2.30 reference standard deviations, index 2.289
                         against a threshold of 1.354 derived from its own null.
                         Material by both instruments. The real change.
-        sd_speed        moved -0.47, index 2.975 against a threshold of 0.431 --
-                        the largest index of all. Material by the index alone,
-                        and the two measures rank the features differently
-                        because they answer different questions.
-        sd_payload      moved -0.47, index 0.422 against a threshold of 0.440.
-                        NOT material -- and banking's 0.25 would have called it
-                        material without ever saying how close the call was.
-        human_driven    moved +1.24, and the index REFUSES: nought in 39 of 45
+        sd_speed        moved -0.47 against a shift threshold of 0.405, index 2.975
+                        against a threshold of 0.431 -- the largest index of all.
+                        Material by both, and the two measures rank the features
+                        differently because they answer different questions.
+        sd_payload      moved -0.47 against a shift threshold of 0.416: material
+                        by the shift. Index 0.422 against a threshold of 0.440:
+                        not by the index -- and banking's 0.25 would have called
+                        it material without ever saying how close the call was.
+        human_driven    moved +1.24 against a shift threshold of 0.458: material
+                        by the shift. The index REFUSES: nought in 39 of 45
                         reference windows, so the bins collapse. This is the
                         column that explains the whole event -- a human drove
                         41 per cent of the second day against 9 per cent of the
@@ -60,7 +69,7 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
         mean_payload    the target. Moved -0.03, index 0.081 -- below its own
                         measured noise floor of 0.105. Nothing.
 
-    So: two inputs are material, the cause is in a column the index could not
+    So: four inputs are material, the cause is in a column the index could not
     measure, and the thing the model predicts sits below the floor of the
     instrument watching it.
 
@@ -81,9 +90,10 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
 
     And the rule the same slide states, with the index half of it derived rather
     than borrowed:
-        material when |Δ| ≥ 2.0 or J ≥ threshold(B, q) derived from this feature's own null
-        (Yurdakul & Naranjo, 2020). Choices: the shift bound is this course's,
-        the index bound is measured per feature at the bin count in use; either
+        material when |Δ| ≥ shift bound or J ≥ threshold(B, q); shift bound = 2.0 (fixed) or shift threshold(q) (measured)
+        (Yurdakul & Naranjo, 2020). Choices: the rule is judged twice, once with
+        the textbook bound of 2.0 and once with the q = 0.99 point of the
+        feature's own null; the index threshold is always measured; either
         instrument may fire; a refused index leaves the shift to decide alone.
     Needs: numpy.asarray, numpy.std, lab_support.load_lab, lab_support.DegenerateReference
     """
@@ -98,6 +108,8 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
         measures = {
             "shift_in_reference_sd": float((after.mean() - before.mean()) / spread)
                                      if spread else float("nan"),
+            # Measured on the reference alone, like the index threshold below.
+            "shift_threshold": shift_threshold(before, len(after)),
             "wasserstein": three.wasserstein(before, after),
         }
         try:
@@ -126,11 +138,17 @@ def verdict(reference, current, features=FEATURES, thresholds=None) -> dict:
         # Either instrument may fire. Requiring both would miss a change in
         # shape that leaves the mean alone, and a shift in mean that leaves the
         # binned shape alone -- and each of those happens here.
+        index_fired = bool(measures["index_measured"]
+                           and measures["population_stability_index"]
+                           >= measures["index_threshold"])
         measures["material"] = bool(
-            abs(measures["shift_in_reference_sd"]) >= MATERIAL_SHIFT_SD
-            or (measures["index_measured"]
-                and measures["population_stability_index"]
-                >= measures["index_threshold"]))
+            abs(measures["shift_in_reference_sd"]) >= measures["shift_threshold"]
+            or index_fired)
+        # The same judgement with the textbook bound in place of the measured
+        # one, so the report shows what each rule sees.
+        measures["shift_bound_fixed"] = MATERIAL_SHIFT_SD
+        measures["material_fixed"] = bool(
+            abs(measures["shift_in_reference_sd"]) >= MATERIAL_SHIFT_SD or index_fired)
         results[feature] = measures
     return results
 
@@ -144,9 +162,10 @@ def positive_control(reference, current,
     instrument nobody has tested is an opinion. So put a shift of a known size
     through the *unchanged* verdict and confirm it comes back material.
 
-    At 1.5 reference standard deviations the shift rule (2.0) does not fire, so
-    what fires is the index: 8.221 against a threshold of 0.465 derived from the
-    target's own null. That is the sentence the null result rests on -- the same
+    At 1.5 reference standard deviations both halves of the rule fire: the shift,
+    1.47 against its measured threshold of 0.431, and the index, 8.221 against a
+    threshold of 0.465 derived from the target's own null. The sweep below shows
+    which fires first at each size: the index from 0.40, the shift from 0.50. That is the sentence the null result rests on -- the same
     code, on the same grain, detects movement when there is some.
 
     But a control at one size only says the detector detects *that* size. So
@@ -166,8 +185,8 @@ def positive_control(reference, current,
 
     Definition graded by the check:
         verdict( reference, current + k·s_reference ) must return material, with k stated beside the result
-        (Saltelli et al., 2019). Choices: k = INJECTED_SHIFT_SD, deliberately
-        below the shift threshold so that what fires is the index; a copy of the
+        (Saltelli et al., 2019). Choices: k = INJECTED_SHIFT_SD, the top of the
+        swept grid; a copy of the
         current frame, so the real answer is left exactly as it was. Slide:
         "Definition — the positive control".
 
@@ -225,10 +244,16 @@ def positive_control(reference, current,
 def drift_verdict(evidence: dict) -> tuple[str, str]:
     """One call out of three, and the reason you would defend it with.
 
-    The order of the four clauses is the whole design, and the third is the one
+    The order of the three clauses is the whole design, and the third is the one
     people leave out: an instrument nobody has tested has not said "quiet", it
     has said nothing, and until the control fires the honest call is "watch"
     rather than a null.
+
+    The noise floor is not a clause. It is the median of the null, so half of
+    all days on which nothing changed read above it by chance, and a clause on
+    it would make "watch" the call on every second quiet day. It stays in the
+    reason as context. What bounds "no material change" is the detection limit,
+    and the reason quotes it.
 
     Note what the reason may not contain: a number that is not in the evidence.
     Every figure quoted below is formatted out of the dictionary handed in, so
@@ -237,11 +262,12 @@ def drift_verdict(evidence: dict) -> tuple[str, str]:
     and it is why a sentence copied off a slide fails it.
 
     Definition graded by the check:
-        act if the target is material; watch if its index is unmeasurable, or the control did not fire, or its index is above the floor; no material change only when the index is at or below the measured floor and the control fired
-        (Saltelli et al., 2019). Choices: the order the four clauses are read
+        act if the target is material; watch if its index is unmeasurable or the control did not fire; otherwise no material change, quoted with the detection limit
+        (Saltelli et al., 2019). Choices: the order the three clauses are read
         in; that an untested instrument's silence is "watch" rather than a null;
-        and that the reason must be built out of the evidence handed in. Slide:
-        "Definition — the drift verdict, and the three calls it may make".
+        that the noise floor is context and not a clause; and that the reason
+        must be built out of the evidence handed in. Slide: "Definition — the
+        drift verdict, and the three calls it may make".
     Needs: nothing but the evidence you were handed
     """
     index = evidence.get("target_index")
@@ -252,9 +278,10 @@ def drift_verdict(evidence: dict) -> tuple[str, str]:
     control = evidence.get("control_index")
     limit = evidence.get("detection_limit")
     material_count = evidence.get("material_count")
+    shift_limit = float(evidence.get("shift_threshold"))
 
     fired = (control is not None and threshold is not None and control >= threshold)
-    material = (abs(shift) >= MATERIAL_SHIFT_SD
+    material = (abs(shift) >= shift_limit
                 or (measured and threshold is not None and index >= threshold))
 
     if material:
@@ -284,24 +311,19 @@ def drift_verdict(evidence: dict) -> tuple[str, str]:
             f"shown to detect anything. Silence from an untested instrument is "
             f"not evidence of quiet.")
 
-    if floor is not None and index <= floor:
-        return "no material change", (
-            f"The target's index is {index:.3f}, at or below its own measured "
-            f"noise floor of {floor:.3f} and far below the index threshold "
-            f"{threshold:.3f} derived from that same null; the standardised "
-            f"shift is {shift:.2f} reference standard deviations; and the "
-            f"positive control fired at {control:.3f}, so the instrument was "
-            f"shown to work before the silence was believed. The "
-            f"{material_count} material features are inputs, not the target, "
-            f"and the detection limit is {limit:.2f} reference standard "
-            f"deviations, which is what we would still have missed.")
-
-    return "watch", (
-        f"The target's index is {index:.3f}: above its measured noise floor of "
-        f"{floor:.3f} but below the index threshold {threshold:.3f}, on a "
-        f"standardised shift of {shift:.2f}. That is measurable movement that "
-        f"is not distinguishable from noise, which is a reason to keep "
-        f"measuring rather than to declare either way.")
+    floor_text = ("" if floor is None else
+                  f" Its noise floor, what the index reads when nothing changed, "
+                  f"is {floor:.3f}, so {index:.3f} is "
+                  f"{'at or below' if index <= floor else 'above'} a typical quiet day.")
+    return "no material change", (
+        f"The target's index is {index:.3f}, below the index threshold "
+        f"{threshold:.3f}, on a standardised shift of {shift:.2f} reference "
+        f"standard deviations against a shift threshold of {shift_limit:.3f}; and "
+        f"the positive control fired at {control:.3f}, so the instrument was shown "
+        f"to work before the silence was believed.{floor_text} The detection limit "
+        f"is {limit:.2f} reference standard deviations: a shift smaller than that "
+        f"could have happened without an alarm. The {material_count} material "
+        f"features are inputs, not the target.")
 
 
 def significance_is_not_size(sample_a, sample_b, readings: int = READING_COUNT,
@@ -507,23 +529,35 @@ if __name__ == "__main__":
             "threshold": (round(measured["index_threshold"], 3)
                           if measured["index_measured"] else "unmeasured"),
             "distance (own units)": round(measured["wasserstein"], 3),
-            "material": measured["material"]})
+            "material, fixed 2.0": measured["material_fixed"],
+            "material, measured": measured["material"]})
     show_table(pd.DataFrame(rows), "the verdict, feature by feature, each against a "
                                    "threshold derived from its own null", logger=say)
 
     material = [name for name, measured in results.items() if measured["material"]]
-    say.info("%d of %d features are material by the rule |shift| >= %.1f or index >= "
-             "the threshold derived for that feature: %s", len(material),
-             len(FEATURES), MATERIAL_SHIFT_SD, ", ".join(material))
+    say.info("%d of %d features are material by the rule |shift| >= its measured "
+             "threshold or index >= the threshold derived for that feature: %s",
+             len(material), len(FEATURES), ", ".join(material))
+    fixed = [name for name, measured in results.items() if measured["material_fixed"]]
+    say.info("%d of %d are material with the fixed shift bound of %.1f instead: %s. "
+             "Caught only by the measured bound: %s", len(fixed), len(FEATURES),
+             MATERIAL_SHIFT_SD, ", ".join(fixed),
+             ", ".join(name for name in material if name not in fixed))
+    # The borrowed 0.25 is compared on the index alone, so that the comparison
+    # isolates what borrowing the index threshold costs.
+    by_index = [name for name, measured in results.items()
+                if measured["index_measured"]
+                and measured["population_stability_index"] >= measured["index_threshold"]]
     borrowed = [name for name, measured in results.items()
-                if abs(measured["shift_in_reference_sd"]) >= MATERIAL_SHIFT_SD
-                or (measured["index_measured"]
-                    and measured["population_stability_index"] >= BORROWED_INDEX)]
-    say.info("with banking's borrowed %.2f in place of the derived thresholds it would "
-             "be %d: %s — the extra alarm is %s, whose index %.3f sits just under its "
+                if measured["index_measured"]
+                and measured["population_stability_index"] >= BORROWED_INDEX]
+    say.info("on the index alone, the derived thresholds alarm on %d: %s",
+             len(by_index), ", ".join(by_index))
+    say.info("with banking's borrowed %.2f in place of the derived index thresholds it "
+             "would be %d: %s — the extra alarm is %s, whose index %.3f sits just under its "
              "own threshold of %.3f. A borrowed threshold cannot tell you how close a "
              "call was", BORROWED_INDEX, len(borrowed), ", ".join(borrowed),
-             ", ".join(sorted(set(borrowed) - set(material))),
+             ", ".join(sorted(set(borrowed) - set(by_index))),
              results["sd_payload"]["population_stability_index"],
              results["sd_payload"]["index_threshold"])
     say.info("and the target, %s, moved %+.2f reference standard deviations with an "
@@ -571,6 +605,7 @@ if __name__ == "__main__":
         "target_index": results[TARGET]["population_stability_index"],
         "target_index_measured": results[TARGET]["index_measured"],
         "standardised_shift": results[TARGET]["shift_in_reference_sd"],
+        "shift_threshold": results[TARGET]["shift_threshold"],
         "noise_floor": results[TARGET]["noise_floor"],
         "index_threshold": results[TARGET]["index_threshold"],
         "control_index": control["population_stability_index"],

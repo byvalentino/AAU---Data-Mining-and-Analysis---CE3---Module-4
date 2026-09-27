@@ -78,8 +78,9 @@ below 0.1 no material change, 0.1 to 0.25 worth investigating, above 0.25 a
 material shift — are convention, not derivation, and they were established on
 populations of many thousands. You have about forty windows a day.
 
-What you write: entropy(p), cross_entropy(p, q), kl_divergence(p, q) and
-population_stability_index(reference, current, bins).
+What you write: entropy(p), cross_entropy(p, q), kl_divergence(p, q),
+population_stability_index(reference, current, bins) and
+index_threshold(reference, current, ...).
 """
 from __future__ import annotations
 

@@ -67,6 +67,38 @@ NULL_QUANTILE = 0.99
 # and shows how far above the limit that size was.
 DETECTION_SIZES = tuple(round(0.05 * step, 2) for step in range(0, 31))
 
+def shift_threshold(reference_values, current_size: int,
+                    resamples: int = NULL_RESAMPLES,
+                    quantile: float = NULL_QUANTILE, seed: int = SEED) -> float:
+    """The threshold of the standardised shift, measured and not borrowed.
+
+    Added 20 September 2026. Until then the shift was judged against a fixed 2.0
+    reference standard deviations. Measured on this archive, no feature's shift
+    reached 2.0 in any of 1,000 comparisons in which nothing had changed, so 2.0
+    carried a false-alarm rate of nought and missed human_driven, the column
+    that explains the event.
+
+    The procedure is the one Lab 2 uses for the index, on the same resamples:
+      1. draw `current_size` values from the reference, with replacement;
+      2. compute (mean of the draw - mean of the reference) / s_reference, ddof = 1;
+      3. repeat `resamples` times with the module seed;
+      4. return the `quantile` point of the absolute values.
+    With 35 draws the result is near 2.576 / sqrt(35) = 0.435, which is what the
+    normal approximation predicts for a 0.99 two-sided quantile.
+    """
+    import numpy as np
+
+    reference_values = np.asarray(reference_values, dtype=float)
+    spread = float(np.std(reference_values, ddof=1))
+    if not spread:
+        return float("nan")
+    rng = np.random.default_rng(seed)
+    null = np.array([(rng.choice(reference_values, size=current_size,
+                                 replace=True).mean() - reference_values.mean()) / spread
+                     for _ in range(resamples)])
+    return float(np.quantile(np.abs(null), quantile))
+
+
 # The threshold credit scoring hands out, kept in one place so that the module
 # can measure what it costs rather than use it. NOTHING in this module grades
 # against it, and Lab 2's check refuses a threshold that sits near it: it is on
