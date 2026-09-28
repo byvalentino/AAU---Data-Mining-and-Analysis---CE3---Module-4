@@ -38,7 +38,7 @@ def wasserstein(a, b) -> float:
         (Vallender, 1974; Peyré & Cuturi, 2019, Remark 2.30). Choices: no binning
         at all, so the answer is in the variable's own units; for two sorted
         samples of equal size it is the mean of |a_(i) − b_(i)| (Remark 2.28).
-        Slide: "Definition — the Wasserstein-1 distance".
+        Slide: "Definition - the Wasserstein-1 distance".
     Needs: numpy.sort, numpy.concatenate, numpy.diff, numpy.searchsorted, numpy.sum
     """
     a = np.sort(np.asarray(a, dtype=float))

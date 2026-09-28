@@ -44,7 +44,7 @@
   {
    "id": "entropy",
    "name": "Shannon entropy",
-   "slide": "Definition — entropy and cross-entropy",
+   "slide": "Definition - entropy and cross-entropy",
    "formula": "H(P) = −Σ_i P(i)·log P(i)",
    "citation": "Shannon (1948), Bell System Technical Journal 27(3), 379–423",
    "lab": 2,
@@ -54,7 +54,7 @@
   {
    "id": "cross_entropy",
    "name": "cross-entropy",
-   "slide": "Definition — entropy and cross-entropy",
+   "slide": "Definition - entropy and cross-entropy",
    "formula": "H(P,Q) = −Σ_i P(i)·log Q(i)",
    "citation": "Murphy (2022), Probabilistic Machine Learning, §6.1.2",
    "lab": 2,
@@ -64,7 +64,7 @@
   {
    "id": "kl_divergence",
    "name": "the Kullback–Leibler divergence",
-   "slide": "Definition — the Kullback–Leibler divergence",
+   "slide": "Definition - the Kullback-Leibler divergence",
    "formula": "D(P ‖ Q) = Σ_i P(i)·log( P(i) / Q(i) ) = H(P,Q) − H(P), in nats",
    "citation": "Kullback & Leibler (1951), Annals of Mathematical Statistics 22(1), 79–86",
    "lab": 2,
@@ -74,7 +74,7 @@
   {
    "id": "jensen_inequality",
    "name": "Jensen's inequality",
-   "slide": "Definition — Jensen's inequality",
+   "slide": "Definition - Jensen's inequality",
    "formula": "f( E[X] ) ≤ E[ f(X) ] for convex f, with equality only where f is straight or X never varies",
    "citation": "Jensen (1906), Acta Mathematica 30, 175–193",
    "lab": 2,
@@ -114,7 +114,7 @@
   {
    "id": "wasserstein_1",
    "name": "the Wasserstein-1 distance",
-   "slide": "Definition — the Wasserstein-1 distance",
+   "slide": "Definition - the Wasserstein-1 distance",
    "formula": "W₁(P,Q) = ∫ |F_P(x) − F_Q(x)| dx = ∫₀¹ |F_P⁻¹(u) − F_Q⁻¹(u)| du",
    "citation": "Vallender (1974), Theory of Probability and Its Applications 18(4), 784–786",
    "lab": 3,
@@ -154,7 +154,7 @@
   {
    "id": "positive_control",
    "name": "the positive control on a null result",
-   "slide": "Definition — the positive control",
+   "slide": "Definition - the positive control",
    "formula": "verdict( reference, current + k·s_reference ) must return material, with k stated beside the result",
    "citation": "Saltelli et al. (2019), Environmental Modelling and Software 114, 29–39",
    "lab": 4,
@@ -164,7 +164,7 @@
   {
    "id": "detection_limit",
    "name": "the detection limit of the verdict on the target",
-   "slide": "Definition — the detection limit",
+   "slide": "Definition - the detection limit",
    "formula": "detection limit = min{ k in the swept sizes : verdict( reference, current + j·s_reference ) is material for every swept j ≥ k }",
    "citation": "Currie (1968), Analytical Chemistry 40(3), 586–593",
    "lab": 4,

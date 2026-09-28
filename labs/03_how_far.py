@@ -6,7 +6,7 @@ half a metre per second". You write the one measure that answers in the
 variable's own units, and you run all four on the same pair so that you can say
 which question each one answers.
 Where it sits: Part 3, "A dimensionless statistic is not an actionable one", and the
-definition slides "Definition — the Wasserstein-1 distance" and "Four statistics, one pair of days, two sets of bin edges".
+definition slides "Definition - the Wasserstein-1 distance" and "Four statistics, one pair of days, two sets of bin edges".
 What the check grades: your distance against scipy on four cases including
 samples of different lengths, exactly five when a sample is shifted by five,
 symmetry and nought against itself; and compare_four returning all four measures,
@@ -36,7 +36,7 @@ and with two samples of the same size, sorted, it is simply
     mean( |a_sorted − b_sorted| )
 
 which is three lines of code and no optimisation at all, despite the
-optimal-transport pedigree (Ramdas et al., 2017).
+optimal-transport pedigree (Peyré & Cuturi, 2019).
 
 Then the comparison, which is the examinable part. Four measures, one pair of
 samples, and each answers a different question:
@@ -86,7 +86,7 @@ def wasserstein(a, b) -> float:
         (Vallender, 1974; Peyré & Cuturi, 2019, Remark 2.30). Choices: no binning
         at all, so the answer is in the variable's own units; for two sorted
         samples of equal size it is the mean of |a_(i) − b_(i)| (Remark 2.28).
-        Slide: "Definition — the Wasserstein-1 distance".
+        Slide: "Definition - the Wasserstein-1 distance".
     Needs: numpy
     """
     # TODO: the area between the two cumulative distribution functions.

@@ -187,7 +187,7 @@ def positive_control(reference, current,
         (Saltelli et al., 2019). Choices: k = INJECTED_SHIFT_SD, the top of the
         swept grid; a copy of the
         current frame, so the real answer is left exactly as it was. Slide:
-        "Definition — the positive control".
+        "Definition - the positive control".
 
     And the limit the sweep reports, which is the module's honest statement of
     what its instrument cannot see:
@@ -195,7 +195,7 @@ def positive_control(reference, current,
         (Currie, 1968). Choices: the swept grid and its step, which is the
         resolution the answer is quoted to; the sustained crossing rather than
         the first one, because at this sample size the index flickers above the
-        threshold before it stays there. Slide: "Definition — the detection
+        threshold before it stays there. Slide: "Definition - the detection
         limit".
     Needs: numpy.std, frame.copy
     """

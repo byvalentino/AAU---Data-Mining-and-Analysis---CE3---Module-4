@@ -78,7 +78,7 @@ def body(lab):
             f"on {feature} your verdict judged against a threshold of "
             f"{row['index_threshold']:.4f}; deriving it from that feature's own null "
             f"here gives {own:.4f}",
-            "The threshold is not a constant and it is not on a slide. It is a "
+            "The threshold is not a constant and it is not read off a slide. It is a "
             "stated quantile of the null your own index produces when the reference "
             "is compared against a resample of itself, at the bin count you are "
             f"comparing at. Note what this rejects: {BORROWED_INDEX}, credit "

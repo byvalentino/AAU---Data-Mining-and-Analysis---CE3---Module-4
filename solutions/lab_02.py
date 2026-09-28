@@ -50,7 +50,7 @@ def entropy(p) -> float:
         H(P) = −Σ_i P(i)·log P(i)
         (Shannon, 1948; Murphy, 2022, §6.1.2). Choices: the natural logarithm, so
         the unit is the nat, and the limit convention for P(i) = 0. Slide:
-        "Definition — entropy and cross-entropy".
+        "Definition - entropy and cross-entropy".
     Needs: numpy.asarray, numpy.log, numpy.sum
     """
     p = np.asarray(p, dtype=float)
@@ -70,7 +70,7 @@ def cross_entropy(p, q) -> float:
         H(P,Q) = −Σ_i P(i)·log Q(i)
         (Murphy, 2022, §6.1.2; Shannon, 1948). Choices: the natural logarithm and
         the same limit convention; a zero in Q where P has mass makes it
-        infinite. Slide: "Definition — entropy and cross-entropy".
+        infinite. Slide: "Definition - entropy and cross-entropy".
     Needs: numpy.asarray, numpy.log, numpy.sum
     """
     p = np.asarray(p, dtype=float)
@@ -100,11 +100,11 @@ def kl_divergence(p, q) -> float:
         D(P ‖ Q) = Σ_i P(i)·log( P(i) / Q(i) ) = H(P,Q) − H(P), in nats
         (Kullback & Leibler, 1951; MacKay, 2003, §2.6). Choices: the natural
         logarithm; nought where the two match; infinite where Q gives no mass to
-        something P does. Slide: "Definition — the Kullback–Leibler divergence".
+        something P does. Slide: "Definition - the Kullback-Leibler divergence".
 
     It is never negative, and that is Jensen's inequality applied to −log:
         f( E[X] ) ≤ E[ f(X) ] for convex f, with equality only where f is straight or X never varies
-        (Jensen, 1906; Wasserman, 2004, Theorem 4.9). Slide: "Definition —
+        (Jensen, 1906; Wasserman, 2004, Theorem 4.9). Slide: "Definition -
         Jensen's inequality".
     Needs: numpy.asarray, numpy.log, numpy.sum
     """

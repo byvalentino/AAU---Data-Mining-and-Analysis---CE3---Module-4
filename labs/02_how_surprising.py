@@ -6,8 +6,8 @@ four small objects that make it sayable, and you find out by measurement that th
 threshold everybody quotes for the fourth is a statement about somebody else's
 sample size rather than about your data.
 Where it sits: Part 2, "Surprisal, and the two ways of averaging it", and the
-definition slides "Definition — entropy and cross-entropy", "Definition — the
-Kullback–Leibler divergence", "Definition - the symmetrised index (Population Stability Index)" and
+definition slides "Definition - entropy and cross-entropy", "Definition - the
+Kullback-Leibler divergence", "Definition - the symmetrised index (Population Stability Index)" and
 "Definition - the noise floor of the index".
 What the check grades: your cross-entropy minus your entropy must equal your
 divergence to ten decimal places on five pairs; all three against scipy; the
@@ -113,7 +113,7 @@ def entropy(p) -> float:
         H(P) = −Σ_i P(i)·log P(i)
         (Shannon, 1948; Murphy, 2022, §6.1.2). Choices: the natural logarithm, so
         the unit is the nat, and the limit convention for P(i) = 0. Slide:
-        "Definition — entropy and cross-entropy".
+        "Definition - entropy and cross-entropy".
     Needs: numpy
     """
     # TODO: -sum(p * log(p)), skipping the zeros.
@@ -131,7 +131,7 @@ def cross_entropy(p, q) -> float:
         H(P,Q) = −Σ_i P(i)·log Q(i)
         (Murphy, 2022, §6.1.2; Shannon, 1948). Choices: the natural logarithm and
         the same limit convention; a zero in Q where P has mass makes it
-        infinite. Slide: "Definition — entropy and cross-entropy".
+        infinite. Slide: "Definition - entropy and cross-entropy".
     Needs: numpy
     """
     # TODO: -sum(p * log(q)), skipping the zeros in p.
@@ -152,12 +152,12 @@ def kl_divergence(p, q) -> float:
         D(P ‖ Q) = Σ_i P(i)·log( P(i) / Q(i) ) = H(P,Q) − H(P), in nats
         (Kullback & Leibler, 1951; MacKay, 2003, §2.6). Choices: the natural
         logarithm; nought where the two match; infinite where Q gives no mass to
-        something P does. Slide: "Definition — the Kullback–Leibler divergence".
+        something P does. Slide: "Definition - the Kullback-Leibler divergence".
 
     It is never negative, and that is Jensen's inequality applied to −log:
         f( E[X] ) ≤ E[ f(X) ] for convex f, with equality only where f is straight or X never varies
         (Jensen, 1906; Wasserman, 2004, Theorem 4.9). The check requires
-        non-negativity on every pair, both ways round. Slide: "Definition —
+        non-negativity on every pair, both ways round. Slide: "Definition -
         Jensen's inequality".
     Needs: numpy
     """
@@ -209,7 +209,7 @@ def index_threshold(reference, current, bins: int = DEFAULT_BINS,
                     quantile: float = NULL_QUANTILE, seed: int = SEED) -> dict:
     """The floor the index reads when nothing changed, and the threshold derived from it.
 
-    The slide's code sketch calls this threshold(ref, B, q, R, seed) and returns the
+    The slide's code sketch calls this threshold(ref, n_cur, B, q, R, seed) and returns the
     threshold alone; here it returns the dictionary described below.
 
     This is the function that stops this module borrowing a number. Credit

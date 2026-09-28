@@ -5,7 +5,7 @@ between 22 and 23 January, and does it matter? The answer on the thing that
 matters is no, and this lab is where you learn to write that down and defend it
 with a threshold you derived, a control that fires, and a stated detection
 limit, which is the harder and the more common professional skill.
-Where it sits: Part 4, "Decision per feature: two inputs moved, one instrument failed", and the definition slides "The alarm rule - when a change in a feature is called material", "Definition — the positive control", "Definition — the
+Where it sits: Part 4, "Decision per feature: two inputs moved, one instrument failed", and the definition slides "The alarm rule - when a change in a feature is called material", "Definition - the positive control", "Definition - the
 detection limit", "Definition - the drift decision and its three admissible calls", "The classifier two-sample test, run on the bus data", "Definition - Welch's t-test, and the bootstrap as a demonstration" and "Effect size - the number that decides whether a change matters".
 What the check grades: a materiality threshold derived from Lab 2's measured
 floor rather than borrowed, per feature; the rule judged with the fixed shift
@@ -51,8 +51,8 @@ wrong. The grain is the correction.
 And one thing is **not** fixed for you, deliberately: the index threshold. The slide on the conventional threshold of 0.25 shows why it is a statement about somebody else's sample size. So this lab does not use it. Every feature's
 threshold is derived from the null you measured in Lab 2 —
 `load_lab(2).index_threshold(...)` — at the bin count you are comparing at and
-at the sample sizes you actually have. That number is on no slide, and it is not
-the same for two columns.
+at the sample sizes you actually have. That number is derived per feature, it is not
+the same for two columns, and yours should match the thresholds on the decision slides.
 
 --------------------------------------------------------------------------
 1. verdict(reference, current, features, thresholds)
@@ -308,7 +308,7 @@ def positive_control(reference, current,
         (Saltelli et al., 2019). Choices: k = INJECTED_SHIFT_SD, the top of the
         swept grid; a copy of the
         current frame, so the real answer is left exactly as it was. Slide:
-        "Definition — the positive control".
+        "Definition - the positive control".
 
     And the limit the sweep reports, which is the module's honest statement of
     what its instrument cannot see:
@@ -316,7 +316,7 @@ def positive_control(reference, current,
         (Currie, 1968). Choices: the swept grid and its step, which is the
         resolution the answer is quoted to; the sustained crossing rather than
         the first one, because at this sample size the index flickers above the
-        threshold before it stays there. Slide: "Definition — the detection
+        threshold before it stays there. Slide: "Definition - the detection
         limit".
     Needs: numpy, and the sizes in lab_support
     """
