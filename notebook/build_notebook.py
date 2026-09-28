@@ -1,1033 +1,570 @@
 #!/usr/bin/env python3
 """Build Module 4's demonstration notebook, and execute it.
 
-    python "Module 4/notebook/build_notebook.py"
-    python "Module 4/notebook/build_notebook.py" --no-run
+    python "Module 4/notebook/build_notebook.py"            build and run
+    python "Module 4/notebook/build_notebook.py" --no-run   build only
 
-Reads `exercises/data/bus_slice.csv.gz` — the committed extract of the vehicle
-telemetry, which is the whole population this module's grain uses: one shuttle,
-both days, 48,290 readings. It used to read `data/bus.csv`, the instructor's copy
-of the archive, which is deliberately not in git, so nobody but the instructor
-could run this notebook. The two give identical numbers on this grain, and the
-extract is the one that ships.
+Rewritten 28 September 2026. The notebook follows the deck, `slides/Module4.pptx`,
+part by part, and holds itself to three things:
 
-The phone traces are not opened, so this notebook needs no aggregate-only
-discipline and can print whatever is useful.
+  every image on a shown slide is drawn here by Python -- on the lab data where
+      the slide shows data, from the same simulation or closed form where it
+      shows one, and labelled "illustrative" where the slide's values were
+      constructed and the lab data cannot stand in (slides/figure_map is
+      notebook/figure_map.json);
+  every lab exercise is stated as its stub states it, and its solution runs step
+      by step, every function's code visible -- copied verbatim from
+      exercises/solutions/ and checked against it by
+      tools/check_notebook_sources.py;
+  every number the slides print is recomputed, and agrees() stops the run if
+      the deck and the code disagree.
 
-The grain is fixed and printed: one shuttle, five-minute windows of at least 300
-readings, the first day as reference.
-
-Executed from `Module 4/exercises`, so its relative paths resolve exactly as the
-labs' do.
+Data: `exercises/data/bus_slice.csv.gz`, the extract every Module 4 lab reads --
+shuttle VJRD1A10224000055, 22 and 23 January 2020, 48,290 readings, no personal
+data. Executed from `Module 4/exercises`, so the relative paths resolve exactly
+as the labs' do. Needs the lab requirements plus notebook/requirements.txt.
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-import nbformat
-from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
-
 HERE = Path(__file__).resolve().parent
-EXERCISES = HERE.parent / "exercises"
+ROOT = HERE.parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+from notebook_kit import Notebook, execute  # noqa: E402
+
 OUTPUT = HERE / "Module4_demonstration.ipynb"
-MARKDOWN, CODE = "markdown", "code"
-
-CELLS = [
-(MARKDOWN, """# Module 4 — Statistics for detecting change
-
-**Data Mining and Analysis (course code CE3) · Aalborg University, Copenhagen**
-
-One inequality and four small mathematical objects — an interval, a divergence,
-a symmetrised index and a distance — built from their definitions and run on the
-real archive.
-
-> **The grain, stated once.** Shuttle VJRD1A10224000055 only, the one that ran on
-> both days; five-minute tumbling windows on `utc_time` holding at least 300
-> readings; 22 January as the reference against 23 January; the target is mean
-> payload per window.
->
-> Why one vehicle: the other shuttle ran on the first day and not the second.
-> Pool both on day one against one on day two and part of what you call drift is
-> a vehicle going to the depot. An earlier version of this course's plan did
-> exactly that and got the *sign* of the target's movement wrong.
->
-> Why at least 300 readings: a window holding a handful of readings is the edge
-> of the day rather than a window. That choice is worth 0.21 of a standard
-> deviation on this module's headline number, which is why it is printed here
-> rather than left in the code."""),
-
-(MARKDOWN, """## Hook
-
-The second day looks different from the first. Prove it — and then work out
-whether it matters, which is a different question with, here, a different
-answer.
-
-Start somewhere smaller, because the shape of the answer is already visible in a
-journey."""),
-
-(CODE, '''# A shuttle covers 30 km at 20 km/h, then the same 30 km at 60 km/h.
-# What was its average speed?
-LEG_KM, FIRST_KMH, SECOND_KMH = 30.0, 20.0, 60.0
-
-mean_of_speeds = (FIRST_KMH + SECOND_KMH) / 2
-hours = LEG_KM / FIRST_KMH + LEG_KM / SECOND_KMH
-journey_speed = 2 * LEG_KM / hours
-
-print(f"average of the two speeds : {mean_of_speeds:.1f} km/h")
-print(f"total distance over total time: {journey_speed:.1f} km/h  ({2 * LEG_KM:.0f} km in {hours:.1f} h)")
-print("\\nNobody made an arithmetic error. Speed and journey time are joined by a")
-print("curve, and averaging before the curve is not averaging after it. That gap")
-print("is Jensen's inequality (Jensen, 1906), and everything below rests on it.")'''),
-
-(CODE, '''import warnings
-from pathlib import Path
-
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-import plotly.io as pio
-from plotly.subplots import make_subplots
-from scipy.stats import entropy as scipy_entropy, wasserstein_distance, ttest_ind
-
-warnings.filterwarnings("ignore", category=FutureWarning)
-
-# The course palette: reference blue, current orange, neutral grey, and red only
-# for what fails.
-BLUE, ORANGE, GREY, RED = "#2A78D6", "#E07B39", "#52514E", "#C0392B"
-
-# The figures load plotly from a content delivery network rather than embedding a
-# copy of it in this file: the embedded copy is four and a half megabytes, once,
-# and a notebook that large is a notebook nobody opens on a train. The portable
-# network graphics beside it are the offline copy.
-pio.renderers.default = "notebook_connected"
-
-FIGURES = Path("../notebook/figures")   # the working directory is Module 4/exercises
-FIGURES.mkdir(parents=True, exist_ok=True)
-
-def show(fig, name, width=900, height=500):
-    """Render inline and keep a portable network graphic beside the notebook."""
-    fig.update_layout(template="plotly_white", width=width, height=height)
-    fig.write_image(str(FIGURES / f"{name}.png"), scale=2)
-    fig.show()
-
-VEHICLE = "VJRD1A10224000055"
-WINDOW = "5min"
-MINIMUM_READINGS = 300
-REFERENCE_DAY, CURRENT_DAY = "2020-01-22", "2020-01-23"
-DEFAULT_BINS = 5
-PSI_EPSILON = 1e-6          # the floor under an empty bin's share; see below
-# Neither half of the material rule is a constant. Both are derived below, per
-# feature, from the null that comes back when the reference is compared against
-# a resample of itself: the index threshold and the shift threshold. BORROWED_INDEX is credit scoring's 0.25, kept only so that
-# borrowing it can be priced.
-BORROWED_INDEX = 0.25
-NULL_RESAMPLES, NULL_QUANTILE = 1000, 0.99
-SEED = 20200122
-
-# The committed extract: one vehicle, both days, every reading this grain uses.
-bus = pd.read_csv(Path("data/bus_slice.csv.gz"), low_memory=False)
-one = bus[bus["vehicle_id"] == VEHICLE].copy()
-one["_t"] = pd.to_datetime(one["utc_time"], utc=True)
-one["window"] = one["_t"].dt.floor(WINDOW)
-one["day"] = one["_t"].dt.date.astype(str)
-
-table = one.groupby("window").agg(
-    mean_speed=("speed", "mean"), sd_speed=("speed", "std"),
-    sd_payload=("payload", "std"), human_driven=("mode", lambda v: float((v == "manual").mean())),
-    mean_payload=("payload", "mean"), readings=("speed", "size"),
-    manual_readings=("mode", lambda v: int((v == "manual").sum())),
-).reset_index()
-table["day"] = table["window"].dt.date.astype(str)
-table = table[table["readings"] >= MINIMUM_READINGS]
-
-reference = table[table["day"] == REFERENCE_DAY]
-current = table[table["day"] == CURRENT_DAY]
-print(f"{len(one):,} readings -> {len(reference)} windows on {REFERENCE_DAY}, "
-      f"{len(current)} on {CURRENT_DAY}")'''),
-
-(MARKDOWN, """## Core Concept
-
-### An interval, and what it costs
-
-From tomorrow there are no labels. Accuracy cannot be computed, only bought —
-somebody checks a sample by hand. So the first question is arithmetic: how
-many?"""),
-
-(MARKDOWN, """> **Definition — the Wald interval.** The observed share of successes, plus and
-> minus the standard normal quantile times the standard error read at that same
-> observed share.
->
-> `p̂ ± z·√( p̂(1−p̂)/n ), with p̂ = k/n successes in n trials`
->
-> Choices: the ninety-five per cent level, so z = 1.96, and the normal
-> approximation to the binomial law (Brown, Cai & DasGupta, 2001; Agresti &
-> Coull, 1998).
-
-> **Definition — the Wilson score interval.** The true rates that would have
-> produced an observation at least as extreme as the one seen, at that level —
-> the test inverted rather than an error bar hung on the estimate.
->
-> `( p̂ + z²/2n ± z·√( p̂(1−p̂)/n + z²/4n² ) ) / ( 1 + z²/n )`
->
-> Same inputs, same level, one more line of code (Wilson, 1927)."""),
-
-(CODE, '''import math
-Z = 1.959963984540054
-
-def naive_interval(k, n):
-    p = k / n
-    half = Z * math.sqrt(p * (1 - p) / n)
-    return (p - half, p + half)
-
-def wilson_interval(k, n):
-    centre = (k + Z**2 / 2) / (n + Z**2)
-    half = (Z / (n + Z**2)) * math.sqrt(k * (n - k) / n + Z**2 / 4)
-    return (centre - half, centre + half)
-
-for k, n in ((34, 40), (40, 40)):
-    lo_n, hi_n = naive_interval(k, n)
-    lo_w, hi_w = wilson_interval(k, n)
-    print(f"{k} of {n}:  naive [{lo_n:.3f}, {hi_n:.3f}]   Wilson [{lo_w:.3f}, {hi_w:.3f}]")
-print("\\nForty out of forty: the naive interval claims certainty from forty")
-print("observations. Only one of these two declines to say so.")'''),
-
-(MARKDOWN, """> **Definition — coverage, and what a half-width costs.** Coverage is the promise
-> measured: the long-run share of intervals that contain the true rate, over many
-> samples drawn at that rate. The label count is the same arithmetic read
-> backwards, at the worst case.
->
-> `coverage(p, n) = (1/R)·Σ_{r=1}^{R} 1{ low_r ≤ p ≤ high_r }` and
-> `n = ⌈ 0.25·(z/h)² ⌉ at the worst case p = ½`
->
-> Choices: R = 4000 samples of n = 40 at each rate, seed 20200122; the worst case
-> p = ½, where p(1−p) is largest; rounding up, because labels come whole (Brown,
-> Cai & DasGupta, 2001)."""),
-
-(CODE, '''# A 95% interval makes a testable claim. Test it.
-def coverage(interval, true_rate, trials=40, repeats=4000, seed=SEED):
-    rng = np.random.default_rng(seed)
-    successes = rng.binomial(trials, true_rate, repeats)
-    contained = [interval(int(k), trials)[0] <= true_rate <= interval(int(k), trials)[1]
-                 for k in successes]
-    return float(np.mean(contained)), float(np.mean(successes == 0))
-
-print(f"{'true rate':>10} {'naive':>8} {'Wilson':>8} {'samples with no successes':>28}")
-for rate in (0.01, 0.02, 0.05, 0.10, 0.30, 0.50):
-    naive_cover, empty = coverage(naive_interval, rate)
-    wilson_cover, _ = coverage(wilson_interval, rate)
-    print(f"{rate:10.2f} {naive_cover:8.3f} {wilson_cover:8.3f} {empty:28.3f}")
-print("\\nBoth promise 0.95. One of them delivers it. The worst point is the lowest")
-print("rate: two thirds of those samples hold no successes at all, the naive")
-print("interval is then [0, 0], and an interval of zero width contains nothing.")'''),
-
-(CODE, '''# What precision costs, in hand-checks.
-def labels_needed(half_width):
-    return int(math.ceil(0.25 * (Z / half_width) ** 2))
-
-print(f"{'half-width':>12} {'labels':>8}")
-for half in (0.10, 0.05, 0.025, 0.01):
-    print(f"{half:12.3f} {labels_needed(half):8,}")
-print("\\nHalving the width costs four times the labels. The square root never stops.")'''),
-
-(CODE, '''# Every result forty hand-checks could produce, both ways.
-counts = np.arange(0, 41)
-wald = np.array([naive_interval(int(k), 40) for k in counts])
-wilson = np.array([wilson_interval(int(k), 40) for k in counts])
-
-figure = go.Figure()
-figure.add_scatter(x=counts, y=wilson[:, 1], mode="lines", showlegend=False,
-                   line=dict(color=BLUE, width=2))
-figure.add_scatter(x=counts, y=wilson[:, 0], mode="lines", name="Wilson interval",
-                   line=dict(color=BLUE, width=2), fill="tonexty",
-                   fillcolor="rgba(42, 120, 214, 0.22)")
-figure.add_scatter(x=counts, y=wald[:, 1], mode="lines", showlegend=False,
-                   line=dict(color=GREY, width=2, dash="dot"))
-figure.add_scatter(x=counts, y=wald[:, 0], mode="lines", name="Wald interval",
-                   line=dict(color=GREY, width=2, dash="dot"), fill="tonexty",
-                   fillcolor="rgba(82, 81, 78, 0.18)")
-figure.add_scatter(x=[0, 40], y=[0.0, 1.0], mode="markers", name="Wald: no width at all",
-                   marker=dict(color=RED, size=12, symbol="x"))
-figure.update_layout(title="Forty hand-checks: what each method reports",
-                     xaxis_title="hand-checked predictions found correct, out of n = 40",
-                     yaxis_title="interval reported for the true rate",
-                     legend=dict(x=0.03, y=0.97))
-show(figure, "wilson_against_wald")'''),
-
-(CODE, '''# And the same choice on the archive's own windows, where the rate being
-# estimated is the share of readings a person drove. At both edges -- no manual
-# reading at all, or nothing but manual readings -- the Wald interval is a point.
-share = (table["manual_readings"] / table["readings"]).to_numpy()
-pairs = list(zip(table["manual_readings"], table["readings"]))
-wald = np.array([naive_interval(int(k), int(n)) for k, n in pairs])
-wilson = np.array([wilson_interval(int(k), int(n)) for k, n in pairs])
-collapsed = (wald[:, 1] - wald[:, 0]) < 1e-12
-position = np.arange(1, len(table) + 1)
-
-print(f"{collapsed.sum()} of {len(table)} windows carry a Wald interval of no width")
-print(f"Wilson on a window with no manual reading and 600 readings: "
-      f"[{wilson_interval(0, 600)[0]:.4f}, {wilson_interval(0, 600)[1]:.4f}]")
-
-figure = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.09,
-                       subplot_titles=("every window, both days",
-                                       "the same windows, magnified onto the floor"))
-for row in (1, 2):
-    figure.add_scatter(x=position, y=share, mode="markers",
-                       marker=dict(color=np.where(collapsed, RED, GREY), size=6),
-                       error_y=dict(type="data", symmetric=False,
-                                    array=wald[:, 1] - share, arrayminus=share - wald[:, 0],
-                                    color=GREY, thickness=1.4, width=0),
-                       name="Wald (red where it has no width)", showlegend=row == 1,
-                       row=row, col=1)
-    figure.add_scatter(x=position + 0.3, y=share, mode="markers",
-                       marker=dict(color=BLUE, size=5),
-                       error_y=dict(type="data", symmetric=False,
-                                    array=wilson[:, 1] - share,
-                                    arrayminus=share - wilson[:, 0],
-                                    color=BLUE, thickness=1.4, width=0),
-                       name="Wilson", showlegend=row == 1, row=row, col=1)
-figure.update_yaxes(title_text="share of readings in manual mode", range=[-0.03, 1.06],
-                    row=1, col=1)
-figure.update_yaxes(title_text="share of readings", range=[-0.002, 0.02], row=2, col=1)
-figure.update_xaxes(title_text="five-minute window, in order of time", row=2, col=1)
-figure.update_layout(legend=dict(orientation="h", x=0.25, y=1.14))
-show(figure, "wilson_on_the_archive", height=640)'''),
-
-(MARKDOWN, """### Surprise, and the two ways to average it
-
-Give an outcome probability p and observing it carries −log(p) of surprise.
-Average that surprise under **today's own** distribution and you have the
-entropy: how varied today was. Average it under **yesterday's** and you have the
-cross-entropy: what today cost you, given what you believed.
-
-The gap between them is the Kullback–Leibler divergence (Kullback & Leibler,
-1951) — the *excess* surprise, not the surprise. Calling the cross-entropy a
-divergence is the commonest error in this material, and it was in this deck's
-own first draft."""),
-
-(MARKDOWN, """> **Definition — entropy and cross-entropy.** Entropy is the average surprise of
-> a distribution under itself; cross-entropy is the average surprise of the same
-> data under a different distribution.
->
-> `H(P) = −Σ_i P(i)·log P(i)` and `H(P,Q) = −Σ_i P(i)·log Q(i)`, natural
-> logarithm, in nats (Shannon, 1948; Murphy, 2022, §6.1.2).
-
-> **Definition — the Kullback–Leibler divergence.** The excess average surprise
-> of holding the wrong distribution.
->
-> `D(P ‖ Q) = Σ_i P(i)·log( P(i) / Q(i) ) = H(P,Q) − H(P), in nats`
->
-> Never negative and nought exactly when the two match — Jensen's inequality
-> applied to −log, which is Gibbs' inequality by MacKay's name for it (Kullback &
-> Leibler, 1951; MacKay, 2003, §2.6).
-
-> **Definition — Jensen's inequality.** `f( E[X] ) ≤ E[ f(X) ] for convex f, with
-> equality only where f is straight or X never varies` (Jensen, 1906; Wasserman,
-> 2004, Theorem 4.9). It is the hook at the top of this notebook, and the reason
-> the divergence has a floor at all."""),
-
-(CODE, '''def entropy(p):
-    p = np.asarray(p, dtype=float); live = p > 0
-    return float(-np.sum(p[live] * np.log(p[live])))
-
-def cross_entropy(p, q):
-    p, q = np.asarray(p, dtype=float), np.asarray(q, dtype=float); live = p > 0
-    if np.any(q[live] == 0): return float("inf")
-    return float(-np.sum(p[live] * np.log(q[live])))
-
-def kl_divergence(p, q):
-    p, q = np.asarray(p, dtype=float), np.asarray(q, dtype=float); live = p > 0
-    if np.any(q[live] == 0): return float("inf")
-    return float(np.sum(p[live] * np.log(p[live] / q[live])))
-
-TODAY, YESTERDAY = [0.9, 0.1], [0.5, 0.5]
-print(f"entropy of today        H(P)    = {entropy(TODAY):.3f} nats")
-print(f"cross-entropy           H(P, Q) = {cross_entropy(TODAY, YESTERDAY):.3f} nats")
-print(f"divergence  H(P,Q) - H(P)       = {cross_entropy(TODAY, YESTERDAY) - entropy(TODAY):.3f} nats")
-print(f"divergence, summed directly     = {kl_divergence(TODAY, YESTERDAY):.3f} nats")
-print(f"\\nthe other way round D(Q||P)     = {kl_divergence(YESTERDAY, TODAY):.3f} nats  <- not the same number")
-print(f"and against scipy               = {float(scipy_entropy(TODAY, YESTERDAY)):.3f} nats")
-print(f"\\nin bits, divide by log(2) = {math.log(2):.4f}: {kl_divergence(TODAY, YESTERDAY) / math.log(2):.3f} bits")'''),
-
-(CODE, '''# The three numbers side by side: the gap between the two averages of surprise
-# is the divergence, and it is the only one of the three with a fixed floor.
-figure = go.Figure(go.Bar(
-    x=["entropy H(P)", "cross-entropy H(P,Q)", "divergence D(P||Q)"],
-    y=[entropy(TODAY), cross_entropy(TODAY, YESTERDAY), kl_divergence(TODAY, YESTERDAY)],
-    marker_color=[BLUE, ORANGE, GREY],
-    text=[f"{value:.3f}" for value in (entropy(TODAY), cross_entropy(TODAY, YESTERDAY),
-                                       kl_divergence(TODAY, YESTERDAY))],
-    textposition="outside"))
-figure.update_layout(title="Today [0.9, 0.1] under yesterday [0.5, 0.5]",
-                     yaxis_title="nats", showlegend=False)
-show(figure, "surprise_decomposition", height=440)'''),
-
-(MARKDOWN, """## Worked Example
-
-### Three cases where the divergence and the distance disagree
-
-The divergence measures how wrong your beliefs were. The distance measures how
-far the world went. Those are different questions, and here are three pairs of
-samples that make the difference impossible to miss.
-
-> **Definition — the Wasserstein-1 distance.** The area between two cumulative
-> distribution functions, which in one dimension is also the cheapest cost of
-> moving one pile of mass into the shape of the other — in the variable's own
-> units.
->
-> `W₁(P,Q) = ∫ |F_P(x) − F_Q(x)| dx = ∫₀¹ |F_P⁻¹(u) − F_Q⁻¹(u)| du`
->
-> For two sorted samples of equal size it is the mean of |a_(i) − b_(i)|
-> (Vallender, 1974; Peyré & Cuturi, 2019, Remarks 2.30 and 2.28).
-
-> **Definition — the two binnings.** All four measures on one pair of samples
-> bin twice, on purpose:
->
-> `H and D: equal-width edges over both samples · J: the reference's quantile
-> edges, opened at both ends`
->
-> A pair in front of you can be binned over both; a monitor watching one
-> reference for months needs a yardstick cut once (Siddiqi, 2006; Yurdakul &
-> Naranjo, 2020)."""),
-
-(CODE, '''def shares_over_both(a, b, bins=DEFAULT_BINS):
-    """Equal-width bins spanning both samples, so a value the reference never
-    held gets a bin of its own instead of hiding inside an existing one."""
-    edges = np.histogram_bin_edges(np.concatenate([a, b]), bins=bins)
-    return (np.histogram(a, bins=edges)[0] / len(a),
-            np.histogram(b, bins=edges)[0] / len(b))
-
-# 1. No overlap: yesterday between 0 and 2 m/s, today between 5 and 7.
-rng = np.random.default_rng(SEED)
-yesterday = rng.uniform(0.0, 2.0, 400)
-today = yesterday + 5.0
-share_yesterday, share_today = shares_over_both(yesterday, today, bins=10)
-
-print("no overlap:")
-print(f"  yesterday {yesterday.min():.2f}-{yesterday.max():.2f} m/s, "
-      f"today {today.min():.2f}-{today.max():.2f} m/s")
-print(f"  divergence  {kl_divergence(share_today, share_yesterday)}  "
-      "<- the same answer for a gap of five and a gap of five hundred")
-print(f"  distance    {wasserstein_distance(yesterday, today):.3f} m/s  <- the gap itself")'''),
-
-(CODE, '''# 2. Shuffled bins: one pair of distributions, and the bins relabelled so that
-#    every share keeps its partner and only the value each bin stands for changes.
-centres = np.array([0.5, 1.5, 2.5, 3.5, 4.5])
-reference_shares = np.array([0.40, 0.30, 0.20, 0.07, 0.03])
-current_shares = np.array([0.03, 0.07, 0.20, 0.30, 0.40])
-order = np.argsort(np.random.default_rng(SEED).permutation(len(centres)))
-
-before_divergence = kl_divergence(current_shares, reference_shares)
-after_divergence = kl_divergence(current_shares[order], reference_shares[order])
-before_distance = wasserstein_distance(centres, centres, reference_shares, current_shares)
-after_distance = wasserstein_distance(centres, centres,
-                                      reference_shares[order], current_shares[order])
-
-print("shuffled bins:")
-print(f"  divergence  {before_divergence:.3f} -> {after_divergence:.3f}   "
-      "<- unchanged; it never knew the values were ordered")
-print(f"  distance    {before_distance:.3f} -> {after_distance:.3f}   "
-      "<- moved; it is built on the geometry, and the geometry is what changed")'''),
-
-(CODE, '''# 3. Moved, or squeezed. Both cases above end in an infinity or in a relabelling,
-#    and both are easy to dismiss as pathologies. This one is neither: the same
-#    law moved sideways, against the same law squeezed about its own centre,
-#    chosen so that the distance cannot tell them apart. The mean and the spread
-#    are the archive's own; the two changes are constructed from them.
-mean = float(reference["mean_speed"].mean())
-spread = float(reference["mean_speed"].std(ddof=1))
-factor = 0.25                       # a quarter of the spread, a stated choice
-shift = (1 - factor) * spread * np.sqrt(2 / np.pi)   # E|Z| = sqrt(2/pi) for a normal
-
-law = np.random.default_rng(SEED).normal(mean, spread, 20000)
-moved, squeezed = law + shift, mean + factor * (law - mean)
-
-share_moved = shares_over_both(law, moved)
-share_squeezed = shares_over_both(law, squeezed)
-print("moved, or squeezed:")
-print(f"  distance    {wasserstein_distance(law, moved):.3f} m/s moved, "
-      f"{wasserstein_distance(law, squeezed):.3f} m/s squeezed  <- the same, by construction")
-print(f"  divergence  {kl_divergence(share_moved[1], share_moved[0]):.3f} nats moved, "
-      f"{kl_divergence(share_squeezed[1], share_squeezed[0]):.3f} nats squeezed  <- not the same")
-print("\\nIn closed form on the normal law, where nothing is binned, the two divergences")
-print("are 0.179 and 0.918 nats: binning pulls both down, and that is what the binning")
-print("costs in exchange for staying finite.")'''),
-
-(CODE, '''# The three cases in one picture: distributions above, cumulative curves below.
-figure = make_subplots(rows=2, cols=3, vertical_spacing=0.14, horizontal_spacing=0.08,
-                       subplot_titles=("no overlap", "bins relabelled", "moved, or squeezed",
-                                       "cumulative curves", "the same, relabelled",
-                                       "cumulative curves"))
-
-def cumulative(sample, grid):
-    return np.searchsorted(np.sort(sample), grid, side="right") / len(sample)
-
-grid = np.linspace(-0.2, 7.2, 400)
-edges = np.linspace(0.0, 7.0, 36)
-mids = (edges[:-1] + edges[1:]) / 2
-for sample, colour, name in ((yesterday, BLUE, "reference"), (today, ORANGE, "current")):
-    figure.add_bar(x=mids, y=np.histogram(sample, bins=edges)[0] / len(sample),
-                   marker_color=colour, name=name, row=1, col=1)
-    figure.add_scatter(x=grid, y=cumulative(sample, grid), mode="lines",
-                       line=dict(color=colour, width=2), showlegend=False, row=2, col=1)
-
-for row, (a, b) in enumerate(((reference_shares, current_shares),
-                              (reference_shares[order], current_shares[order])), start=1):
-    figure.add_bar(x=centres, y=a, marker_color=BLUE, width=0.38, offset=-0.4,
-                   showlegend=False, row=row, col=2)
-    figure.add_bar(x=centres, y=b, marker_color=ORANGE, width=0.38, offset=0.02,
-                   showlegend=False, row=row, col=2)
-
-fine = np.linspace(mean - 4 * spread, mean + 4 * spread, 400)
-for sample, colour, dash in ((law, BLUE, "solid"), (moved, ORANGE, "solid"),
-                             (squeezed, GREY, "dash")):
-    counts, bin_edges = np.histogram(sample, bins=60, range=(fine[0], fine[-1]))
-    figure.add_scatter(x=(bin_edges[:-1] + bin_edges[1:]) / 2, y=counts / len(sample),
-                       mode="lines", line=dict(color=colour, width=2, dash=dash),
-                       showlegend=False, row=1, col=3)
-    figure.add_scatter(x=fine, y=cumulative(sample, fine), mode="lines",
-                       line=dict(color=colour, width=2, dash=dash), showlegend=False,
-                       row=2, col=3)
-
-figure.update_xaxes(title_text="metres per second", row=2, col=1)
-figure.update_xaxes(title_text="bin centre, metres per second", row=2, col=2)
-figure.update_xaxes(title_text="window mean speed, metres per second", row=2, col=3)
-figure.update_yaxes(title_text="share", row=1, col=1)
-figure.update_yaxes(title_text="cumulative share", row=2, col=1)
-figure.update_layout(barmode="overlay", legend=dict(orientation="h", x=0.3, y=1.12))
-show(figure, "divergence_against_distance", width=1100, height=620)'''),
-
-(MARKDOWN, """### The verdict — the same table that reaches the slide
-
-Three measures per feature and one rule: material when the shift reaches **the
-shift threshold derived from that feature's own null** or the index reaches
-**the index threshold derived from the same null**. Both bounds are
-measurements. There is deliberately no 0.25 and no 2.0 anywhere in the rule.
-
-> **Definition — the symmetrised index.** `J(P,Q) = Σ_i ( P(i) − Q(i) )·log(
-> P(i) / Q(i) ) = D(P‖Q) + D(Q‖P)`, over binned shares, with edges from the
-> reference's own quantiles and a floor of 1e-06 under every share (Jeffreys,
-> 1946). Under no change (1/n + 1/m)⁻¹·J is approximately chi-squared with one
-> fewer degree of freedom than bins, so any threshold depends on the two sample
-> sizes and the bin count (Yurdakul & Naranjo, 2020).
-
-> **Definition — the standardised shift, and the rule it is read against.**
-> `Δ = ( mean_current − mean_reference ) / s_reference, ddof = 1` (Glass, 1976),
-> and `material when |Δ| ≥ shift threshold(q) or J ≥ threshold(B, q), both
-> derived from this feature's own null` (Yurdakul & Naranjo, 2020). The
-> shift threshold is the q point of |Δ| over resamples of the reference, drawn at
-> the current day's sample size. The reference period's own spread, not a pooled
-> one; either instrument may fire.
-
-> **Definition — the materiality threshold, derived from the floor.**
-> `threshold(B, q) = Quantile_q { J( reference, resample of the reference ) at B
-> bins }, over the same R resamples` (Yurdakul & Naranjo, 2020). The floor is the
-> median of that same null; the threshold is a point in its tail, and `q` is a
-> false-alarm rate said out loud rather than a convention nobody derived."""),
-
-(CODE, '''def population_stability_index(reference_sample, current_sample, bins=DEFAULT_BINS):
-    """Symmetric, binned on the REFERENCE's quantiles -- never on today's -- and
-    floored at PSI_EPSILON so one empty bin does not make the whole index infinite.
-
-    Returns (index, measured). A reference whose quantile edges collapse to fewer
-    than three distinct values has one bin, both shares are 1.0, and the index is
-    exactly nought whatever the column did. That is not "no change", it is "no
-    measurement", so it comes back flagged rather than as a reassuring zero.
-    """
-    edges = np.unique(np.quantile(reference_sample, np.linspace(0, 1, bins + 1)))
-    if len(edges) < 3:
-        return 0.0, False
-    edges[0], edges[-1] = -np.inf, np.inf
-    share_a = np.clip(np.histogram(reference_sample, bins=edges)[0] / len(reference_sample),
-                      PSI_EPSILON, None)
-    share_b = np.clip(np.histogram(current_sample, bins=edges)[0] / len(current_sample),
-                      PSI_EPSILON, None)
-    return float(np.sum((share_b - share_a) * np.log(share_b / share_a))), True
-
-FEATURES = ["mean_speed", "sd_speed", "sd_payload", "human_driven", "mean_payload"]
-TARGET = "mean_payload"
-
-def index_threshold(reference_sample, current_sample, bins=DEFAULT_BINS,
-                    resamples=NULL_RESAMPLES, quantile=NULL_QUANTILE, seed=SEED):
-    """The floor the index reads under no change, and the threshold derived from it.
-
-    Comparing the reference against a resample of ITSELF is two samples from one
-    world, so the distribution that comes back is what "nothing happened" looks
-    like at this bin count and these sample sizes. Its median is the floor; the
-    stated quantile of its upper tail is the threshold, and that quantile is a
-    false-alarm rate somebody chose out loud.
-    """
-    stream = np.random.default_rng(seed)
-    null = np.array([population_stability_index(
-        reference_sample, stream.choice(reference_sample, size=len(current_sample),
-                                        replace=True), bins)[0]
-        for _ in range(resamples)])
-    return {"noise_floor": float(np.median(null)),
-            "threshold": float(np.quantile(null, quantile)),
-            "share_above_borrowed": float(np.mean(null >= BORROWED_INDEX)),
-            "bins": bins, "resamples": resamples, "quantile": quantile, "seed": seed}
-
-def shift_threshold(reference_sample, current_size, resamples=NULL_RESAMPLES,
-                    quantile=NULL_QUANTILE, seed=SEED):
-    """The threshold of the standardised shift, measured and not borrowed.
-
-    Same null as the index: draw the current day's sample size from the reference
-    with replacement, standardise its mean against the reference's own mean and
-    spread, and take the stated quantile of the absolute values. A fixed 2.0
-    would never have fired on this archive in 1,000 comparisons in which nothing
-    changed, and would have missed human_driven, the column that explains the event.
-    """
-    spread = reference_sample.std(ddof=1)
-    if not spread:
-        return float("nan")
-    stream = np.random.default_rng(seed)
-    null = np.array([(stream.choice(reference_sample, size=current_size,
-                                    replace=True).mean() - reference_sample.mean()) / spread
-                     for _ in range(resamples)])
-    return float(np.quantile(np.abs(null), quantile))
-
-def verdict(reference_frame, current_frame, features=FEATURES, thresholds=None):
-    thresholds = dict(thresholds or {})
-    rows = {}
-    for feature in features:
-        before = reference_frame[feature].dropna().to_numpy()
-        after = current_frame[feature].dropna().to_numpy()
-        shift = (after.mean() - before.mean()) / before.std(ddof=1)
-        index, measured = population_stability_index(before, after)
-        # The null is built out of the reference alone, so a caller sweeping the
-        # current day can derive it once and hand it back. A column that cannot
-        # be binned has no null and therefore no threshold either.
-        derived = thresholds.get(feature) if measured else None
-        if measured and derived is None:
-            derived = index_threshold(before, after)
-        shift_limit = shift_threshold(before, len(after))
-        rows[feature] = {
-            "shift": shift, "shift_threshold": shift_limit,
-            "index": index, "index_measured": measured,
-            "noise_floor": derived["noise_floor"] if measured else None,
-            "threshold": derived["threshold"] if measured else None,
-            "wasserstein": wasserstein_distance(before, after),
-            "material": bool(abs(shift) >= shift_limit
-                             or (measured and index >= derived["threshold"])),
-        }
-    return rows
-
-def print_verdict(rows):
-    print(f"{'feature':14}{'shift SD':>10}{'shift thr':>11}{'index':>13}{'floor':>13}"
-          f"{'threshold':>13}{'material':>10}")
-    for feature, row in rows.items():
-        index = f"{row['index']:.3f}" if row["index_measured"] else "unmeasured"
-        floor = f"{row['noise_floor']:.3f}" if row["index_measured"] else "unmeasured"
-        threshold = f"{row['threshold']:.3f}" if row["index_measured"] else "unmeasured"
-        marker = "  <- target" if feature == TARGET else ""
-        print(f"{feature:14}{row['shift']:+10.2f}{row['shift_threshold']:11.3f}{index:>13}{floor:>13}"
-              f"{threshold:>13}{str(row['material']):>10}{marker}")
-
-rows = verdict(reference, current)
-print_verdict(rows)
-material = [f for f, r in rows.items() if r["material"]]
-borrowed = [f for f, r in rows.items()
-            if abs(r["shift"]) >= r["shift_threshold"]
-            or (r["index_measured"] and r["index"] >= BORROWED_INDEX)]
-largest = max((f for f, r in rows.items() if r["index_measured"]),
-              key=lambda f: rows[f]["index"])
-print(f"\\n{len(material)} of {len(FEATURES)} material: {', '.join(material)}")
-print(f"with banking's {BORROWED_INDEX} instead it would be {len(borrowed)}: "
-      f"{', '.join(borrowed)}")
-print(f"sd_payload is material through its shift, {abs(rows['sd_payload']['shift']):.2f} "
-      f"against {rows['sd_payload']['shift_threshold']:.3f}. Its index "
-      f"{rows['sd_payload']['index']:.3f} sits just under its own threshold of "
-      f"{rows['sd_payload']['threshold']:.3f}, where banking's {BORROWED_INDEX} would have "
-      f"fired on the index instead: same call, different reason.")
-print(f"largest index of all: {largest}, not mean_speed. Two measures, two orderings.")
-print(f"\\nand the target: index {rows[TARGET]['index']:.3f} against its own measured "
-      f"noise floor of {rows[TARGET]['noise_floor']:.3f} -- BELOW the floor, so the "
-      f"instrument cannot tell it apart from a day on which nothing happened.")'''),
-
-(MARKDOWN, """Four inputs raise an alarm, and the largest moved more than two reference
-standard deviations. The target moved three hundredths of a standard deviation.
-
-A monitor watching inputs would have fired. A monitor watching the target would
-not. **Both would have been right** — and the operator's question is not "did
-anything change?" but "must we do anything?"
-
-Note the row the index could not measure at all. `human_driven` is nought in
-most reference windows, so its quantile edges collapse to one bin and the index
-has no reading — for the column that explains the whole event. The measured
-shift threshold is what catches it: 1.24 reference standard deviations against
-0.458. A fixed 2.0 would have missed it.
-
-### The cause is in a column nobody was watching"""),
-
-(CODE, '''window_share = {day: round(float(group["human_driven"].mean()) * 100, 1)
-                for day, group in table.groupby("day")}
-reading_share = {day: round(float((group["mode"] == "manual").mean()) * 100, 2)
-                 for day, group in one.groupby("day")}
-print("manual mode, mean of the per-window shares:", window_share)
-print("manual mode, share of readings            :", reading_share)
-
-degenerate = reference["human_driven"].dropna().to_numpy()
-edges = np.unique(np.quantile(degenerate, np.linspace(0, 1, DEFAULT_BINS + 1)))
-print(f"\\nreference windows holding nought: {(degenerate == 0).sum()} of {len(degenerate)}")
-print(f"distinct quantile edges surviving: {len(edges)} -> {len(edges) - 1} bin")
-print("\\nThe speed distribution moved because a person was driving four times as")
-print("often. That is the `mode` column, nothing was monitoring it, and the index")
-print("cannot see it.")'''),
-
-(MARKDOWN, """> **Definition — the positive control.** `verdict( reference, current +
-> k·s_reference ) must return material, with k stated beside the result`. Without
-> one, "nothing changed" is a claim about an instrument nobody has tested
-> (Saltelli et al., 2019).
-
-> **Definition — the detection limit.** `detection limit = min{ k in the swept
-> sizes : verdict( reference, current + j·s_reference ) is material for every
-> swept j ≥ k }` (Currie, 1968). A control at one size says the detector detects
-> that size. The sweep says what it is blind to, and that belongs in the
-> report."""),
-
-(MARKDOWN, """### The positive control
-
-"The target did not move" is an absence claim. An absence claim from an
-instrument nobody has tested is an opinion, so inject a shift of a known size
-and re-run the **unchanged** verdict."""),
-
-(CODE, '''INJECTED_SHIFT_SD = 1.5
-DETECTION_SIZES = [round(0.05 * step, 2) for step in range(0, 31)]
-
-payload = reference[TARGET].dropna().to_numpy()
-spread = payload.std(ddof=1)
-# Derived once: the null resamples the reference against itself, so nothing the
-# sweep does to the current day can change it. Holding it fixed is what "the
-# unchanged verdict" means.
-target_threshold = {TARGET: index_threshold(payload, current[TARGET].dropna().to_numpy())}
-
-def inject(size):
-    moved = current.copy()
-    moved[TARGET] = moved[TARGET] + size * spread
-    return verdict(reference, moved, [TARGET], target_threshold)[TARGET]
-
-control = inject(INJECTED_SHIFT_SD)
-print(f"injected {INJECTED_SHIFT_SD} reference standard deviations into the target")
-print(f"  shift     {control['shift']:+.2f} SD against a shift threshold of "
-      f"{control['shift_threshold']:.3f}")
-print(f"  index     {control['index']:.3f}")
-print(f"  threshold {control['threshold']:.3f}")
-print(f"  material  {control['material']}")
-
-swept = [inject(size) for size in DETECTION_SIZES]
-fired = [row["material"] for row in swept]
-first = next(size for size, hit in zip(DETECTION_SIZES, fired) if hit)
-limit = next(size for position, size in enumerate(DETECTION_SIZES) if all(fired[position:]))
-print(f"\\nsweep {DETECTION_SIZES[0]} to {DETECTION_SIZES[-1]} SD in steps of 0.05:")
-print(f"  first firing at        {first} SD -- and it falls back at the next size")
-print(f"  material from          {limit} SD upwards, and at every larger size")
-print(f"  detection limit        {limit} reference SD = {limit * spread:.1f} kilograms")
-shift_first = next(size for size, row in zip(DETECTION_SIZES, swept)
-                   if abs(row["shift"]) >= row["shift_threshold"])
-index_first = next(size for size, row in zip(DETECTION_SIZES, swept)
-                   if row["index_measured"] and row["index"] >= row["threshold"])
-print(f"\\nAt 1.5 both halves of the rule fire. The index half first fires at {index_first} SD")
-print(f"and the shift half at {shift_first} SD. The same code, on the same grain, detects")
-print("movement when there is some, and now we can also say what it would have missed:")
-print(f"anything under {limit * spread:.1f} kilograms of mean payload per five-minute window.")
-
-curve = go.Figure()
-curve.add_scatter(x=DETECTION_SIZES, y=[row["index"] for row in swept],
-                  mode="lines+markers", line=dict(color=BLUE, width=2.5),
-                  name="index of the injected target")
-curve.add_hline(y=control["threshold"], line=dict(color=ORANGE, dash="dash"),
-                annotation_text=f"derived threshold {control['threshold']:.3f}")
-curve.add_hline(y=rows[TARGET]["noise_floor"], line=dict(color=GREY, dash="dot"),
-                annotation_text=f"measured floor {rows[TARGET]['noise_floor']:.3f}")
-curve.add_vline(x=limit, line=dict(color=RED, width=2),
-                annotation_text=f"detection limit {limit} SD")
-curve.update_layout(title="How small a shift in the target this instrument can still see",
-                    showlegend=False, yaxis_type="log")
-curve.update_xaxes(title_text="shift injected into the target, in reference standard deviations")
-curve.update_yaxes(title_text="symmetrised index (nats, logarithmic)")
-show(curve, "detection_limit", width=1000, height=560)'''),
-
-(MARKDOWN, """### The threshold you borrowed does not fit your sample
-
-Banking reads an index above 0.25 as a material shift. Those thresholds come
-from scorecard populations of many thousands. Here there are about forty windows
-a day — so measure what the index reads when **nothing** has changed, and take
-the threshold out of that instead of out of a handbook."""),
-
-(CODE, '''# Compare the reference against a RESAMPLE OF ITSELF -- no change at all.
-# The median of what comes back is the floor; its 0.99 quantile is the threshold;
-# and the share of it above 0.25 is the false-alarm rate borrowing that number buys.
-today = current[TARGET].dropna().to_numpy()
-observed = {bins: population_stability_index(payload, today, bins)[0]
-            for bins in (3, 5, 10, 20)}
-print(f"{'bins':>5}{'floor':>9}{'threshold':>11}{'passes 0.25':>13}{'fires on nothing':>18}")
-for bins in (3, 5, 10, 20):
-    derived = index_threshold(payload, today, bins)
-    fires = observed[bins] >= derived["threshold"]
-    print(f"{bins:5}{derived['noise_floor']:9.3f}{derived['threshold']:11.3f}"
-          f"{derived['share_above_borrowed']:13.3f}{str(fires):>18}")
-print(f"\\nAt five bins, one comparison in ten in which NOTHING changed already passes")
-print("0.25. At ten bins it is closer to three in five, and the last column is the")
-print("measurement that settles the bin count: at ten bins the untouched target")
-print(f"reads {observed[10]:.3f} against a threshold of "
-      f"{index_threshold(payload, today, 10)['threshold']:.3f}, so the verdict calls")
-print(f"it material -- a false alarm on a column that moved {rows[TARGET]['shift']:+.2f} SD.")
-print(f"At five bins it reads {observed[5]:.3f} against {rows[TARGET]['threshold']:.3f} and")
-print("does not. Find your own floor before trusting anybody's number.")'''),
-
-(MARKDOWN, """### Significance is not size
-
-> **Definition — Welch's t-test, and the bootstrap to the reading grain.**
-> `t = ( m₁ − m₂ ) / √( s₁²/n₁ + s₂²/n₂ )` (Welch, 1947), with no common variance
-> assumed; and the same difference resampled with replacement to n readings, seed
-> 20200122 (Efron, 1979) — only the sample size changes.
->
-> **Definition — Cohen's d.** `d = ( m₁ − m₂ ) / s_pooled, s_pooled = √(
-> ((n₁−1)s₁² + (n₂−1)s₂²) / (n₁+n₂−2) )` (Cohen, 1988). The pooling is weighted
-> by degrees of freedom; the unweighted root mean square is a different number
-> whenever the samples differ in size, and here they do."""),
-
-(CODE, '''before = reference["mean_speed"].dropna().to_numpy()
-after = current["mean_speed"].dropna().to_numpy()
-
-windows = ttest_ind(before, after, equal_var=False)
-readings = ttest_ind(one.loc[one["day"] == REFERENCE_DAY, "speed"],
-                     one.loc[one["day"] == CURRENT_DAY, "speed"], equal_var=False)
-# Cohen's pooling, weighted by degrees of freedom -- 45 windows against 35, so
-# the unweighted root mean square of the two variances is a different number.
-pooled = np.sqrt(((len(before) - 1) * before.var(ddof=1)
-                  + (len(after) - 1) * after.var(ddof=1))
-                 / (len(before) + len(after) - 2))
-unweighted = np.sqrt((before.var(ddof=1) + after.var(ddof=1)) / 2)
-
-# A p-value is never exactly nought. The reading-grain one underflows the
-# smallest double there is, so what gets printed is a bound: "p = 0" claims
-# something no test can support.
-reported = (f"{readings.pvalue:.3g}" if readings.pvalue > 0
-            else f"less than 1e-300 (it underflowed to exactly {readings.pvalue})")
-print(f"at {len(before) + len(after):>6,} windows : p = {windows.pvalue:.3g}")
-print(f"at {len(one):>6,} readings: p = {reported}")
-print(f"\\nCohen's d, pooled by degrees of freedom : {(after.mean() - before.mean()) / pooled:.3f}")
-print(f"the unweighted pooling would give        : {(after.mean() - before.mean()) / unweighted:.3f}")
-
-# And the reading grain is not worth 48,290 independent observations anyway:
-# consecutive readings half a second apart correlate at 0.997 (measured in
-# Module 1), which leaves n(1-rho)/(1+rho).
-rho = 0.997
-print(f"effective sample size at rho = {rho}: {len(one) * (1 - rho) / (1 + rho):.0f}")
-print("\\nThe difference did not change. Only how much of it we looked at -- and the")
-print("larger sample was mostly the same shuttle, half a second later.")'''),
-
-(MARKDOWN, """### The test the required reading argues for
-
-> **Definition — the classifier two-sample test.** `the two samples differ when
-> the interval around a held-out classifier's accuracy lies above chance, chance
-> = 1/2 on balanced classes` (Rabanser, Günnemann & Lipton, 2019). Balanced to
-> the smaller day so chance is one half; half of each trains and half is held
-> out; features standardised by the training reference alone; Wilson's interval
-> at 95 per cent.
-
-Rabanser, Günnemann and Lipton put the marginal tests this module builds against
-a domain classifier and found the classifier hard to beat. So run it here, on
-the same pair of days, and read the interval rather than the accuracy."""),
-
-(CODE, '''def classifier_two_sample_test(reference_frame, current_frame, features=FEATURES,
-                              seed=SEED):
-    """A domain classifier as a two-sample test, with block one's interval on it.
-
-    Nearest class centroid on standardised features: a linear rule in six lines,
-    which is enough to make the reading's point. Standardising with the training
-    reference alone rather than with both days is not fussiness -- standardising
-    with both would let the held-out rows inform the scaling, and the test would
-    then be partly about itself.
-    """
-    stream = np.random.default_rng(seed)
-    before = reference_frame[list(features)].dropna().to_numpy(dtype=float)
-    after = current_frame[list(features)].dropna().to_numpy(dtype=float)
-
-    size = min(len(before), len(after))
-    before = before[stream.permutation(len(before))[:size]]
-    after = after[stream.permutation(len(after))[:size]]
-
-    train = size // 2
-    centre = before[:train].mean(axis=0)
-    scale = np.where(before[:train].std(axis=0, ddof=1) > 0,
-                     before[:train].std(axis=0, ddof=1), 1.0)
-    reference_centroid = ((before[:train] - centre) / scale).mean(axis=0)
-    current_centroid = ((after[:train] - centre) / scale).mean(axis=0)
-
-    def says_current(sample):
-        standardised = (sample - centre) / scale
-        return (((standardised - current_centroid) ** 2).sum(axis=1)
-                < ((standardised - reference_centroid) ** 2).sum(axis=1))
-
-    correct = int((~says_current(before[train:])).sum() + says_current(after[train:]).sum())
-    held_out = len(before[train:]) + len(after[train:])
-    low, high = wilson_interval(correct, held_out)
-    return {"correct": correct, "held_out": held_out, "accuracy": correct / held_out,
-            "interval": (low, high), "chance": 0.5, "detected": bool(low > 0.5)}
-
-joint = classifier_two_sample_test(reference, current)
-alone = classifier_two_sample_test(reference, current, [TARGET])
-for name, outcome in (("all five features", joint), ("the target alone", alone)):
-    print(f"{name:20} {outcome['correct']:3} of {outcome['held_out']} held out, "
-          f"accuracy {outcome['accuracy']:.3f}, interval "
-          f"[{outcome['interval'][0]:.3f}, {outcome['interval'][1]:.3f}], "
-          f"detected {outcome['detected']}")
-print("\\nIt detects on all five -- by three thousandths at the lower bound, with an")
-print("interval nearly three tenths wide. On the target alone it does not, which is")
-print("the index's answer reached by an entirely different route.")
-print("\\nThe reading's result stands; its conditions do not hold here. They test on")
-print("thousands of samples. We have 36 held-out windows, and the honest comparison")
-print("is that at this sample size the classifier is not better -- it is untestable,")
-print("and the four measures also say WHICH column moved.")'''),
-
-(MARKDOWN, """### What the law asks of a monitor
-
-Regulation (EU) 2024/1689, the European Union Artificial Intelligence Act,
-Article 15 — accuracy, robustness and cybersecurity.
-
-- **Article 15(3):** the levels of accuracy and the relevant accuracy metrics of
-  a high-risk system *shall be declared in the instructions for use*. Declared,
-  to whoever operates the system — not measured internally and filed.
-- **Article 15(4):** the system shall be as resilient as possible regarding
-  errors, faults or inconsistencies that may occur within it or in the
-  environment in which it operates. A drifting input distribution is that
-  environment moving.
-
-Two sentences worth saying plainly. **The positive control is how you evidence
-that a monitor works** — a monitor nobody has shown can fire is not evidence of
-anything. And **a declared metric without a measured floor is not a
-declaration**: "the index is below 0.25" says nothing until somebody says what
-the index reads when nothing has changed, and how small a change would still
-have been missed.
-
-The Annex III high-risk obligations fall due on **2 December 2027** after the
-Digital Omnibus deferral. That is a deadline for evidence, and the evidence is
-the kind of measurement in the cells above."""),
-
-(MARKDOWN, """## Practice
-
-1. **Does the verdict survive a different grain?** Recompute the table at one
-   minute and at fifteen minutes. Does the target ever become material? What does
-   that tell you about quoting a shift without its grain?
-2. **Where is the noise floor for the Wasserstein distance?** Resample the
-   reference against itself and find the distribution of distances. Is the
-   target's 20.9 kilograms inside it?
-3. **How small a shift would the control still catch?** Repeat the positive
-   control at 1.0, 0.5 and 0.25 standard deviations. At what size does the
-   detector stop firing, and what does that say about what your null result
-   actually established?
-
-Answers in the Appendix."""),
-
-(CODE, '''# Your workings here.
-'''),
-
-(MARKDOWN, """## Appendix
-
-### Answers"""),
-
-(CODE, '''# 1. The verdict is stable across grains -- but the numbers are not, which is
-#    exactly why the grain is printed beside them.
-for window in ("1min", "5min", "15min"):
-    grouped = one.assign(w=one["_t"].dt.floor(window)).groupby("w").agg(
-        mean_payload=("payload", "mean"), readings=("speed", "size")).reset_index()
-    grouped["day"] = grouped["w"].dt.date.astype(str)
-    # The same rule as the main table: at least half a full window of readings,
-    # at two readings a second. Using a different floor here would make the
-    # 5-minute row disagree with the table above for no reason.
-    floor_reads = {"1min": 60, "5min": 300, "15min": 900}[window]
-    grouped = grouped[grouped["readings"] >= floor_reads]
-    a = grouped.loc[grouped["day"] == REFERENCE_DAY, "mean_payload"]
-    b = grouped.loc[grouped["day"] == CURRENT_DAY, "mean_payload"]
-    print(f"{window:>6}: {len(a):3} vs {len(b):3} windows, target shift "
-          f"{(b.mean() - a.mean()) / a.std(ddof=1):+.2f} SD")
-
-# 2. The target's distance sits inside the null distribution -- it is noise.
-rng = np.random.default_rng(SEED)
-distances = [wasserstein_distance(payload, rng.choice(payload, size=35, replace=True))
-             for _ in range(500)]
-observed = wasserstein_distance(payload, current[TARGET].dropna().to_numpy())
-print(f"\\nnull distances: median {np.median(distances):.1f}, "
-      f"95th percentile {np.quantile(distances, 0.95):.1f} kg")
-print(f"observed target distance: {observed:.1f} kg -> "
-      f"{'inside the noise' if observed < np.quantile(distances, 0.95) else 'outside'}")
-
-# 3. How small a shift the control still catches -- and the sweep above already
-#    answered it: the limit is the smallest size from which the answer STAYS
-#    material, not the first size at which it fires.
-print()
-for size in (1.5, 1.0, 0.5, 0.25):
-    row = inject(size)
-    print(f"injected {size:>4} SD -> index {row['index']:7.3f}   material {row['material']}")
-print(f"\\nand the sustained limit, off the sweep: {limit} reference SD "
-      f"= {limit * spread:.1f} kilograms per window")'''),
-
-(MARKDOWN, """## References
-
-- Jensen, J. L. W. V. (1906). *Sur les fonctions convexes et les inégalités entre les valeurs moyennes.* Acta Mathematica 30, 175–193. https://doi.org/10.1007/BF02418571
-- Wilson, E. B. (1927). *Probable inference, the law of succession, and statistical inference.* Journal of the American Statistical Association 22(158), 209–212. https://doi.org/10.1080/01621459.1927.10502953
-- Kantorovich, L. V. (1942). *On the translocation of masses.* Doklady Akademii Nauk SSSR 37(7–8), 227–229; English reprint, Management Science 5(1), 1958, 1–4. https://doi.org/10.1287/mnsc.5.1.1
-- Bayley, G. V. & Hammersley, J. M. (1946). *The "effective" number of independent observations in an autocorrelated time series.* Supplement to the Journal of the Royal Statistical Society 8(2), 184–197. https://doi.org/10.2307/2983560
-- Jeffreys, H. (1946). *An invariant form for the prior probability in estimation problems.* Proceedings of the Royal Society A 186, 453–461. https://doi.org/10.1098/rspa.1946.0056
-- Welch, B. L. (1947). *The generalization of "Student's" problem when several different population variances are involved.* Biometrika 34(1/2), 28–35. https://doi.org/10.1093/biomet/34.1-2.28
-- Shannon, C. E. (1948). *A Mathematical Theory of Communication.* Bell System Technical Journal 27(3), 379–423. https://doi.org/10.1002/j.1538-7305.1948.tb01338.x
-- Kullback, S. & Leibler, R. A. (1951). *On Information and Sufficiency.* Annals of Mathematical Statistics 22(1), 79–86. https://doi.org/10.1214/aoms/1177729694
-- Page, E. S. (1954). *Continuous Inspection Schemes.* Biometrika 41(1/2), 100–115. https://doi.org/10.1093/biomet/41.1-2.100
-- Vallender, S. S. (1974). *Calculation of the Wasserstein distance between probability distributions on the line.* Theory of Probability and Its Applications 18(4), 784–786. https://doi.org/10.1137/1118101
-- Glass, G. V. (1976). *Primary, secondary, and meta-analysis of research.* Educational Researcher 5(10), 3–8. https://doi.org/10.3102/0013189X005010003
-- Efron, B. (1979). *Bootstrap methods: another look at the jackknife.* Annals of Statistics 7(1), 1–26. https://doi.org/10.1214/aos/1176344552
-- Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences*, 2nd ed. Lawrence Erlbaum.
-- Currie, L. A. (1968). *Limits for qualitative detection and quantitative determination.* Analytical Chemistry 40(3), 586–593 — the detection limit, and the discipline of never reporting "not detected" without it. https://doi.org/10.1021/ac60259a007
-- Lewis, E. M. (1994). *An Introduction to Credit Scoring.* Athena Press — the origin of the 0.1 and 0.25 rule of thumb.
-- Benjamini, Y. & Hochberg, Y. (1995). *Controlling the False Discovery Rate.* Journal of the Royal Statistical Society B 57(1), 289–300. https://doi.org/10.1111/j.2517-6161.1995.tb02031.x
-- Agresti, A. & Coull, B. A. (1998). *Approximate is better than "exact" for interval estimation of binomial proportions.* The American Statistician 52(2), 119–126. https://doi.org/10.1080/00031305.1998.10480550
-- Brown, L. D., Cai, T. T. & DasGupta, A. (2001). *Interval Estimation for a Binomial Proportion.* Statistical Science 16(2), 101–133. https://doi.org/10.1214/ss/1009213286
-- MacKay, D. J. C. (2003). *Information Theory, Inference, and Learning Algorithms*, §2.6. Cambridge University Press. https://www.inference.org.uk/itprnn/book.pdf
-- Wasserman, L. (2004). *All of Statistics.* Springer — ch. 5 for the central limit theorem, Theorem 4.9 for Jensen's inequality.
-- Cover, T. M. & Thomas, J. A. (2006). *Elements of Information Theory*, 2nd ed., ch. 2. Wiley — entropy and the divergence; Theorem 2.6.3 is the information inequality, and it defines neither the cross-entropy nor "Gibbs' inequality" by name. https://doi.org/10.1002/047174882X
-- Siddiqi, N. (2006). *Credit Risk Scorecards.* Wiley; and (2017) *Intelligent Credit Scoring*, 2nd ed. https://doi.org/10.1002/9781119282396
-- Wasserstein, R. & Lazar, N. (2016). *The ASA Statement on p-Values.* The American Statistician 70(2), 129–133. https://doi.org/10.1080/00031305.2016.1154108
-- Ramdas, A., García Trillos, N. & Cuturi, M. (2017). *On Wasserstein Two-Sample Testing and Related Families of Nonparametric Tests.* Entropy 19(2), 47 — the two-sample test, not the closed form. https://doi.org/10.3390/e19020047
-- Peyré, G. & Cuturi, M. (2019). *Computational Optimal Transport.* Foundations and Trends in Machine Learning 11(5–6), 355–607 — Remark 2.30 and Remark 2.28. https://doi.org/10.1561/2200000073
-- Rabanser, S., Günnemann, S. & Lipton, Z. (2019). *Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift.* NeurIPS 32. https://arxiv.org/abs/1810.11953
-- Saltelli, A. et al. (2019). *Why so many published sensitivity analyses are false.* Environmental Modelling and Software 114, 29–39. https://doi.org/10.1016/j.envsoft.2019.01.012
-- Truong, C., Oudre, L. & Vayatis, N. (2020). *Selective review of offline change point detection methods.* Signal Processing 167, 107299. https://doi.org/10.1016/j.sigpro.2019.107299
-- Yurdakul, B. & Naranjo, J. (2020). *Statistical properties of the population stability index.* Journal of Risk Model Validation 14(4), 89–100. https://doi.org/10.21314/JRMV.2020.227
-- Murphy, K. P. (2022). *Probabilistic Machine Learning: An Introduction*, §6.1.2. MIT Press. https://probml.github.io/pml-book/book1.html
-- Regulation (EU) 2024/1689 of the European Parliament and of the Council laying down harmonised rules on artificial intelligence (Artificial Intelligence Act), Article 15. https://eur-lex.europa.eu/eli/reg/2024/1689/oj
-
-*All output above is Author's own, computed from
-`Module 4/exercises/data/bus_slice.csv.gz` — the committed extract of
-`data/bus.csv`, vehicle VJRD1A10224000055 on 22–23 January 2020, vehicle data
-only and no personal data — by this notebook, on the grain printed at the top.
-The figures are plotly and are also saved under `notebook/figures/`. The lag-1
-autocorrelation of 0.997 is read from Module 1 rather than re-measured, and the
-two closed-form divergences quoted in the third contrast are computed in
-`Module 4/slides/make_figs.py`.*"""),
-]
-
-
-def main(*arguments):
-    notebook = new_notebook(cells=[
-        new_markdown_cell(text) if kind == MARKDOWN else new_code_cell(text)
-        for kind, text in CELLS])
-    notebook.metadata.update({
-        "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-        "language_info": {"name": "python"}})
-
-    if "--no-run" not in arguments:
-        from nbclient import NotebookClient
-        # Executed from exercises/, so `data/bus_slice.csv.gz` resolves exactly as
-        # it does for the labs sitting next to it.
-        NotebookClient(notebook, timeout=1800,
-                       resources={"metadata": {"path": str(EXERCISES)}}).execute()
-
-    OUTPUT.write_text(nbformat.writes(notebook))
-    executed = sum(1 for cell in notebook.cells if cell.get("outputs"))
-    print(f"wrote {OUTPUT.name} — {len(CELLS)} cells, {executed} with output")
+EXERCISES = HERE.parent / "exercises"
+S = "Module 4/exercises/solutions"
+LABS = "Module 4/exercises/labs"
+SUPPORT = "Module 4/exercises/lab_support.py"
+NARRATE = "Module 4/exercises/_narrate.py"
+
+nb = Notebook(4, HERE / "references.json")
+
+# The shape of every explanation cell above a code cell.
+def explain(goal: str, why: str, what: str, so_what: str, extra: str = "") -> None:
+    text = (f"**Goal.** {goal}\n\n**Why.** {why}\n\n**What the code does.** {what}\n\n"
+            f"**So what.** {so_what}")
+    nb.md(text + (f"\n\n{extra}" if extra else ""))
+
+
+# =============================================================================
+# Front matter and set-up
+# =============================================================================
+
+def front_matter() -> None:
+    nb.md("""
+    # Module 4 — Detecting distribution shift
+
+    **Data Mining and Analysis (course code CE3) · Aalborg University, Copenhagen**
+
+    *Quantifying uncertainty, divergence and effect size after the labels stop.*
+
+    A model is in production and today's data have no labels. The deck asks four
+    questions about that situation and answers each with a number computed on our
+    own data. This notebook is the deck's companion: it follows the same four parts
+    in the same order, draws every figure on the shown slides (the title photograph and one text-only diagram excepted), states every laboratory
+    exercise as the lab file states it, and runs the reference solution step by
+    step with all of its code on the page.
+
+    | Part | The question | Laboratory |
+    |---|---|---|
+    | 1 | How good is my model today, when nobody has labelled today's data? | Lab 1 — interval estimation and coverage |
+    | 2 | Has the input data changed since the model was trained? | Lab 2 — divergence, index, and a threshold you derived |
+    | 3 | By how much has it changed, in units I can act on? | Lab 3 — distance, and one function for all four statistics |
+    | 4 | Is the change real, does it matter, and what do I do about it? | Lab 4 — the decision |
+
+    **How to read it.** Every code cell has a short note above it: the *goal*, *why*
+    it is done, *what the code does*, and *so what* — what the result lets you say.
+    Cells that begin `# Source: … verbatim` are copied from the laboratory files
+    and are checked against them, so the code you read is the code the labs run.
+    Cells that draw a figure name the slide they reproduce. Formulas are written
+    in Python with `sympy` and displayed as LaTeX.
+
+    **How to run it.** From `Module 4/exercises`, after `bash setup.sh` and
+    `pip install -r ../notebook/requirements.txt`. The whole notebook runs in under
+    one minute.
+
+    **Data.** `exercises/data/bus_slice.csv.gz` — the extract every Module 4 lab
+    reads: shuttle VJRD1A10224000055 on 22 and 23 January 2020, 48,290 readings of
+    vehicle telemetry, no personal data. The slides' source lines name
+    `data/bus.csv`, the full archive; for this vehicle the two hold the same rows,
+    so the numbers below are the slides' numbers, recomputed; where one differs, the notebook says so and why, and the closing section lists every such case.
+    """)
+
+
+def setup() -> None:
+    nb.md("## Set-up")
+    explain(
+        "Load the libraries, and define the three small tools every later cell uses.",
+        "A notebook that claims to reproduce a deck needs a way to show a figure, a "
+        "formula and a number side by side with what the slide printed.",
+        "`show()` renders a plotly figure to a static image embedded in the notebook, so "
+        "it displays anywhere, including offline. `formula()` displays a sympy expression "
+        "as LaTeX. `agrees()` prints a number the deck states beside the same number "
+        "computed here and stops the run when they differ; `beside()` prints two numbers "
+        "that are expected to differ, with the reason.",
+        "If the deck and the code ever disagree, this notebook fails to run rather than "
+        "quietly showing a different number.")
+    nb.code('''
+    import math
+    import warnings
+    from pathlib import Path
+
+    import numpy as np
+    import pandas as pd
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import sympy as sp
+    from scipy import stats
+    from scipy.stats import ttest_ind
+    from IPython.display import Image, Math, display
+
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    pd.set_option("display.width", 120)
+
+    BLUE, ORANGE, GREY, RED, GREEN, NAVY = ("#2A78D6", "#E07B39", "#52514E",
+                                           "#C0392B", "#2E8B57", "#1F2A5A")
+
+
+    def show(fig, name, width=1000, height=560):
+        """Draw a plotly figure as a static image inside the notebook."""
+        fig.update_layout(template="plotly_white", width=width, height=height)
+        if fig.layout.margin.t is None:          # unless the figure asked for its own room
+            fig.update_layout(margin=dict(l=70, r=30, t=70, b=60))
+        display(Image(fig.to_image(format="png", width=width, height=height, scale=1)))
+
+
+    def formula(*parts):
+        """Display sympy expressions (or LaTeX strings) side by side."""
+        pieces = [p if isinstance(p, str) else sp.latex(p, order="none") for p in parts]
+        display(Math(r"\\qquad ".join(pieces)))
+
+
+    def pm(centre, half):
+        """LaTeX for 'centre plus or minus half', from two sympy expressions."""
+        return sp.latex(centre, order="none") + r" \\pm " + sp.latex(half, order="none")
+
+
+    def agrees(what, computed, stated, places, source="deck"):
+        """A number the deck (or, where named, the lab's measurement record) states,
+        recomputed here. Stops the run on a mismatch."""
+        mine = round(float(computed), places)
+        if abs(mine - float(stated)) > 0.5 * 10 ** -places + 1e-12:
+            raise AssertionError(f"{what}: {source} says {stated}, the code gives {mine}")
+        print(f"  {what:<62} {source} {stated:<10} computed {int(mine) if places == 0 else mine}")
+
+
+    DIFFERENCES = []   # every beside() call, gathered for the closing table
+
+
+    def beside(what, computed, stated, why):
+        """Two numbers that are expected to differ, printed with the reason."""
+        DIFFERENCES.append((what, str(computed), str(stated), why))
+        print(f"  {what}: computed here {computed}, stated {stated} — {why}")
+    ''')
+
+    nb.md("""
+    ### The laboratory machinery, in full
+
+    The labs share one support file, `exercises/lab_support.py`. It fixes the grain
+    — which vehicle, which windows, which day is the reference — and the constants
+    every lab reads, so that a number and the choices it was made under are never
+    separated. Nothing here is imported from it: the next cells *are* it.
+    """)
+    explain(
+        "Let `lab_support.py`'s path constants resolve inside a notebook.",
+        "The file finds its data relative to its own location (`__file__`), which a "
+        "notebook does not have.",
+        "Points `__file__` at `lab_support.py` in the working directory, which is "
+        "`Module 4/exercises` when this notebook runs.",
+        "The next cell can then be copied from the file unchanged.")
+    nb.code('''
+    import pathlib
+    __file__ = str(Path.cwd() / "lab_support.py")
+    assert Path(__file__).exists(), "run this notebook from Module 4/exercises"
+    ''')
+    explain(
+        "Define the grain, the constants and the data loaders the four labs share.",
+        "Every number in this module depends on choices — vehicle, window length, "
+        "reference day, bin count, threshold quantile, seed. Standing rule: print them "
+        "beside the number.",
+        "Copies `lab_support.py` verbatim, except `load_lab`, which reads the students' "
+        "unsolved files and is replaced two cells below.",
+        "`windowed()` turns 48,290 readings into one row per five-minute window; every "
+        "`n` in this module counts those windows.")
+    nb.source(SUPPORT, "HERE", "BUS_SLICE", "VEHICLE", "WINDOW", "REFERENCE_DAY",
+              "CURRENT_DAY", "MINIMUM_READINGS", "READING_COUNT", "SEED", "PSI_EPSILON",
+              "MINIMUM_EDGES", "NULL_RESAMPLES", "NULL_QUANTILE", "DETECTION_SIZES",
+              "shift_threshold", "BORROWED_INDEX", "NotSolved", "EnvironmentNotReady",
+              "DegenerateReference", "load_bus", "REQUIRED_FEATURES",
+              "CANDIDATE_FEATURES", "STOPPED_BELOW", "windowed", "reference_and_current",
+              cite="[@yurdakul2020; @efron1979]")
+    explain(
+        "Give the solutions the narration helpers they print with.",
+        "Each solution's demonstration tells its story through `narrator`, `show_table` "
+        "and `save_figure`; running the demonstration here needs the same three.",
+        "Copies `narrator` and `show_table` verbatim from `exercises/_narrate.py`. "
+        "`save_figure` is the one change: in the terminal it writes files under `out/`; "
+        "here it applies the same layout and shows the figure in place.",
+        "The demonstration steps further down run unchanged.")
+    nb.source(NARRATE, "_START", "_Elapsed", "narrator", "show_table")
+    explain(
+        "Show the lab's figures in place.",
+        "In the terminal `save_figure` writes files under `out/`; in a notebook the figure belongs on the page.",
+        "Applies the same layout as `_narrate.save_figure` and displays the figure instead of writing it.",
+        "The demonstration steps below call it unchanged.")
+    nb.code('''
+    def save_figure(fig, name, lab, logger=None, width=1000, height=560):
+        """The notebook's save_figure: the same layout as exercises/_narrate.py,
+        shown in place instead of written to out/lab_0K_<name>.html."""
+        show(fig, f"lab_{lab:02d}_{name}", width=width, height=height)
+    ''')
+
+    nb.md("""
+    ### The data and the unit of analysis
+
+    *Slides: "Position in the course" and "Experimental protocol: the unit of analysis".*
+    """)
+    explain(
+        "Load the telemetry and cut it into the unit every statistic in this module counts.",
+        "Readings half a second apart are nearly copies of each other, so 48,290 "
+        "readings are not 48,290 observations. The deck's unit is one five-minute window "
+        "of one bus, dropping windows with fewer than 300 readings.",
+        "Reads the slice, builds the window table with `windowed()`, and splits it into "
+        "the reference day (22 January) and the current day (23 January).",
+        "45 windows against 35: every interval, test and threshold below works on these "
+        "80 numbers per feature, and says so.")
+    nb.code('''
+    bus = load_bus()
+    table = windowed(bus)
+    reference, current = reference_and_current()
+    print(f"readings in the slice          {len(bus):,}  (vehicle {VEHICLE})")
+    print(f"window                         {WINDOW}, at least {MINIMUM_READINGS} readings")
+    print(f"reference day {REFERENCE_DAY}   {len(reference)} windows")
+    print(f"current day   {CURRENT_DAY}   {len(current)} windows")
+    agrees("reference windows", len(reference), 45, 0)
+    agrees("current windows", len(current), 35, 0)
+    agrees("readings in the slice", len(bus), 48290, 0)
+    table.head()
+    ''')
+    explain(
+        "Make the solutions' `load_lab(n)`, and any `from lab_support import …` inside a lab "
+        "file, resolve to the code defined in this notebook.",
+        "Lab 3 reuses Lab 2's functions and Lab 4 reuses all three, through `load_lab(n)`; the "
+        "file version reads the students' unsolved stubs, which raise `NotSolved`. A stub's own "
+        "demonstration also imports from `lab_support`, which here is the cells above, not the file.",
+        "`load_lab(n)` returns a view of this notebook's definitions, so every solved function is "
+        "found by name as soon as its cell has run; a module named `lab_support` is registered "
+        "that answers from the same definitions.",
+        "The solutions' code runs here exactly as written, and nothing is imported from the lab "
+        "files on disk.")
+    nb.code('''
+    import sys
+    import types
+
+
+    class _Defined:
+        """The solved labs: whatever this notebook has defined, looked up by name."""
+        def __getattr__(self, name):
+            try:
+                return globals()[name]
+            except KeyError:
+                raise AttributeError(name) from None
+
+
+    def load_lab(number):
+        """The notebook's load_lab: the functions defined in this notebook, not labs/0N_*.py."""
+        return _Defined()
+
+
+    _cells = types.ModuleType("lab_support", "lab_support.py, as defined in this notebook's cells")
+    _cells.__getattr__ = _Defined().__getattr__
+    sys.modules["lab_support"] = _cells
+    ''')
+
+
+# =============================================================================
+# Part 1 — estimator uncertainty under label scarcity
+# =============================================================================
+
+def part_1() -> None:
+    nb.md("""
+    ---
+    # Part 1 — Estimator uncertainty under label scarcity
+
+    **The question of this part:** how good is my model today, when nobody has
+    labelled today's data?
+
+    Module 2 measured the label coverage: complete on the reference day, absent on
+    the current day. So accuracy can no longer be computed. It can only be *bought*:
+    somebody checks a random sample of predictions by hand. Out of `n` predictions
+    checked, `k` are found correct, and `p̂ = k/n` is the observed accuracy. The true
+    accuracy `p` is unknown; an interval says which values of it are still plausible.
+
+    *Slides: "The thread: from the bus archive to k correct out of n checked" and
+    "The post-deployment evaluation problem". The thread slide's five-step diagram is
+    text in boxes and carries no data; it is not redrawn.*
+    """)
+
+    # --- slide 10: the standard normal ------------------------------------------
+    nb.md("### What a confidence interval is, and where 1.96 comes from\n\n"
+          "*Slide: \"Reminder: what a confidence interval is, and where 1.96 comes from\".*")
+    explain(
+        "Draw the standard normal curve with its middle 95% shaded.",
+        "\"95% confident\" is a promise about a procedure: repeat the sampling and 95% of "
+        "the intervals contain the truth. The 1.96 is where the middle 95% of a standard "
+        "normal ends, and the central limit theorem is what makes a sample proportion "
+        "approximately normal [@wasserman2004, ch. 5].",
+        "Evaluates the normal density with `scipy.stats.norm` and computes the cut points "
+        "as quantiles, rather than typing 1.96.",
+        "The z that every interval below uses is a quantile, and it changes with the level: "
+        "1.645 at 90%, 2.576 at 99%.")
+    nb.figure("standard_normal", '''
+    x = np.linspace(-3.5, 3.5, 701)
+    z95 = stats.norm.ppf(0.975)
+    fig = go.Figure()
+    middle = np.abs(x) <= z95
+    fig.add_scatter(x=x[middle], y=stats.norm.pdf(x[middle]), fill="tozeroy", mode="none",
+                    fillcolor="rgba(46,139,87,0.35)", name="middle 95%")
+    fig.add_scatter(x=x, y=stats.norm.pdf(x), mode="lines", line=dict(color=NAVY, width=3),
+                    name="standard normal")
+    for cut in (-z95, z95):
+        fig.add_vline(x=cut, line=dict(color=GREY, dash="dash"),
+                      annotation_text=f"{cut:+.2f}", annotation_position="top")
+    fig.add_annotation(x=0, y=0.15, text="95%", showarrow=False, font=dict(size=22))
+    for side in (-1, 1):
+        fig.add_annotation(x=side * 2.7, y=0.04, text="2.5%", showarrow=False)
+    fig.update_layout(title="The standard normal: the middle 95% lies between −1.96 and +1.96",
+                      xaxis_title="z", yaxis_title="density")
+    show(fig, "standard_normal", height=460)
+    agrees("z at 95%", z95, 1.96, 2)
+    agrees("z at 90%", stats.norm.ppf(0.95), 1.645, 3)
+    agrees("z at 99%", stats.norm.ppf(0.995), 2.576, 3)
+    ''', slides=["10"], treatment="exact: closed form")
+
+    # --- slide 11: sampling distribution and the CLT ------------------------------
+    nb.md("### The sampling distribution and the central limit theorem\n\n"
+          "*Slide: \"The sampling distribution and the central limit theorem\".*")
+    explain(
+        "Write the central limit theorem the slide states.",
+        "An interval around an average is possible because the average has its own "
+        "distribution, which becomes normal as the sample grows [@wasserman2004, ch. 5].",
+        "Builds the limit and the 95% statement as sympy expressions and displays them.",
+        "The same expression tells you what the theorem needs: independent observations "
+        "of finite variance. The next figure shows the first condition failing on our data.")
+    nb.equation("clt", '''
+    mu, sigma, n, z = sp.symbols(r"\\mu \\sigma n z", positive=True)
+    Xbar = sp.Symbol(r"\\bar{X}_n")
+    normal, probability = sp.Function(r"\\mathcal{N}"), sp.Function(r"\\mathbb{P}")
+    formula(Xbar, r"\\longrightarrow", normal(mu, sigma**2 / n))
+    formula(probability(sp.Le(sp.Abs(Xbar - mu), z * sigma / sp.sqrt(n))), r"\\approx 0.95",
+            sp.Eq(z, sp.Float(1.96, 3), evaluate=False))
+    ''', slides=["11"])
+    explain(
+        "Show the theorem at work on a skewed variable from the bus: the payload readings of "
+        "the reference day.",
+        "The slide draws a skewed population and the means of samples of 5 and of 30. Here "
+        "the population is real: 22 January's payload readings, which pile up near empty "
+        "and trail off towards full.",
+        "Draws 4,000 samples of 5 and of 30 readings *independently, with replacement* "
+        "(seed 20200122), averages each, and overlays the normal curve the theorem predicts: "
+        "mean μ and standard deviation σ/√n.",
+        "At n = 5 the means are still skewed; at n = 30 they are close to normal. Drawing "
+        "independently is the assumption the theorem needs — the readings as recorded are "
+        "not independent, which is the next slide.")
+    nb.figure("clt_on_payload", '''
+    population = bus.loc[pd.to_datetime(bus["utc_time"], utc=True).dt.date.astype(str)
+                         == REFERENCE_DAY, "payload"].to_numpy(float)
+    mu, sigma = population.mean(), population.std(ddof=0)
+    rng = np.random.default_rng(SEED)
+    draws = rng.choice(population, size=(4000, 30), replace=True)
+    panels = [("the population: every reading of 22 January", population, None),
+              ("means of samples of n = 5", draws[:, :5].mean(axis=1), 5),
+              ("means of samples of n = 30", draws.mean(axis=1), 30)]
+    fig = make_subplots(rows=1, cols=3, subplot_titles=[title for title, _, _ in panels],
+                        horizontal_spacing=0.07)
+    for column, (title, values, size) in enumerate(panels, start=1):
+        fig.add_histogram(x=values, histnorm="probability density", nbinsx=30,
+                          marker_color=GREY if size is None else BLUE, opacity=0.8,
+                          showlegend=False, row=1, col=column)
+        if size:
+            grid = np.linspace(values.min(), values.max(), 200)
+            fig.add_scatter(x=grid, y=stats.norm.pdf(grid, mu, sigma / math.sqrt(size)),
+                            mode="lines", line=dict(color=ORANGE, width=2.5),
+                            name="normal curve the theorem predicts", showlegend=column == 2,
+                            row=1, col=column)
+        fig.update_xaxes(title_text="kilograms", row=1, col=column)
+    fig.update_layout(title="The central limit theorem on real payload readings "
+                            "(skewness of the population "
+                            f"{stats.skew(population):.2f})",
+                      legend=dict(orientation="h", y=-0.2))
+    show(fig, "clt_on_payload", height=430)
+    print(f"population: {len(population):,} readings, mean {mu:.1f} kg, sd {sigma:.1f} kg, "
+          f"skewness {stats.skew(population):.2f}")
+    for size in (5, 30):
+        means = draws[:, :size].mean(axis=1)
+        print(f"means of n = {size:>2}: skewness {stats.skew(means):.2f}, sd {means.std():.1f} kg "
+              f"against sigma/sqrt(n) = {sigma / math.sqrt(size):.1f} kg")
+    ''', slides=["11"], treatment="lab data: the slide's constructed skewed population "
+                                  "replaced by 22 January's payload readings")
+
+    # --- slide 12: effective sample size -------------------------------------------
+    nb.md("### Effective sample size under autocorrelation\n\n"
+          "*Slide: \"Effective sample size under autocorrelation\".*")
+    explain(
+        "Measure how much independent information 48,290 readings hold.",
+        "Every interval divides by the square root of a sample size. If consecutive "
+        "readings nearly repeat each other, that size overstates the information and every "
+        "interval is too narrow [@bayley1946].",
+        "Sorts the readings by time, measures the lag-1 autocorrelation ρ of speed, and "
+        "applies the first-order approximation n_eff ≈ n(1 − ρ)/(1 + ρ).",
+        "About 73 effective observations — the same order as the 80 windows, reached from "
+        "the opposite direction. That is why the unit of analysis is the window.")
+    nb.code('''
+    in_order = bus.assign(_t=pd.to_datetime(bus["utc_time"], utc=True)).sort_values("_t")
+    rho = float(in_order["speed"].autocorr(1))
+    n_readings = len(bus)
+    n_effective = n_readings * (1 - round(rho, 3)) / (1 + round(rho, 3))
+    agrees("lag-1 autocorrelation of speed, in time order", rho, 0.997, 3)
+    agrees("effective sample, n(1 - rho)/(1 + rho)", n_effective, 73, 0)
+    agrees("share of information kept, (1 - rho)/(1 + rho), per cent",
+           100 * (1 - 0.997) / (1 + 0.997), 0.15, 2)
+    ''')
+    explain(
+        "Derive the factor (1 − ρ)/(1 + ρ) rather than quote it.",
+        "The slide states the approximation; the paper it cites treats the general and the "
+        "continuous-time case [@bayley1946, § 10]. Deriving the discrete first-order case "
+        "here removes any doubt about where the factor comes from.",
+        "For a series whose correlation at lag h is ρ^h, the variance of the mean of n "
+        "values is (σ²/n²) Σᵢ Σⱼ ρ^|i−j|: n pairs on the diagonal and 2(n − h) pairs at each "
+        "lag h. The effective sample is the size an independent sample would need for the "
+        "same variance, n² / Σᵢ Σⱼ ρ^|i−j|. For large n the double sum is n(1 + 2 Σ ρ^h), and "
+        "sympy sums the geometric series.",
+        "The exact finite-n value and the approximation agree to within one observation at "
+        "n = 48,290.")
+    nb.equation("effective_sample", '''
+    rho_, n_, h = sp.symbols(r"\\rho n h", positive=True)
+    geometric = sp.summation(rho_**h, (h, 1, sp.oo))      # rho/(1 - rho), for rho < 1
+    if isinstance(geometric, sp.Piecewise):
+        geometric = geometric.args[0][0]
+    n_eff = sp.simplify(n_ / (1 + 2 * geometric))
+    formula(sp.Eq(sp.Symbol(r"n_{\\mathrm{eff}}"), n_eff, evaluate=False),
+            r"\\rho = 0.997,\\ n = 48{,}290 \\;\\Rightarrow\\; n_{\\mathrm{eff}} \\approx "
+            + f"{float(n_eff.subs({rho_: 0.997, n_: 48290})):.0f}")
+    lags = np.arange(1, 48290)
+    exact = 48290**2 / (48290 + 2 * np.sum((48290 - lags) * 0.997**lags))
+    print(f"exact at n = 48,290: {exact:.1f}   first-order approximation: "
+          f"{float(n_eff.subs({rho_: 0.997, n_: 48290})):.1f}")
+    ''', slides=["12"])
+    explain(
+        "Draw the share of information kept against ρ, with the bus marked on it.",
+        "The slide's chart shows how fast the factor collapses as ρ approaches 1.",
+        "Plots 100 (1 − ρ)/(1 + ρ) for ρ from 0 to 1 and marks the measured ρ.",
+        "At ρ = 0.997 only 0.15% of the nominal readings count.")
+    nb.figure("information_kept", '''
+    grid = np.linspace(0, 0.999, 400)
+    fig = go.Figure()
+    fig.add_scatter(x=grid, y=100 * (1 - grid) / (1 + grid), mode="lines",
+                    line=dict(color=NAVY, width=3), name="(1 − ρ)/(1 + ρ)")
+    fig.add_scatter(x=[rho], y=[100 * (1 - rho) / (1 + rho)], mode="markers+text",
+                    marker=dict(color=RED, size=12), textposition="top left",
+                    text=[f"bus speed: ρ = {rho:.3f}, {100 * (1 - rho) / (1 + rho):.2f}% kept, "
+                          f"{n_readings:,} → {n_effective:.0f}"], name="measured")
+    fig.update_layout(title="Share of information kept, (1 − ρ)/(1 + ρ)",
+                      xaxis_title="lag-1 autocorrelation ρ", yaxis_title="per cent kept",
+                      showlegend=False)
+    show(fig, "information_kept", height=440)
+    ''', slides=["12"], treatment="exact: closed form, with the measured ρ")
+
+    # --- slides 13-15: Wald, Wilson ---------------------------------------------------
+    nb.md("### The Wald interval, and the Wilson score interval\n\n"
+          "*Slides: \"The Wald interval: definition and failure modes\", \"The Wilson score "
+          "interval: definition\" and \"Worked comparison: 34 of 40, and 40 of 40\".*")
+    explain(
+        "Write the two interval formulas the slides define.",
+        "The Wald interval puts an error bar on the estimate; the Wilson interval keeps "
+        "every true rate a score test would not reject [@wilson1927; @brown2001; @agresti1998].",
+        "Builds each formula in sympy, then checks symbolically that the slide's Wilson "
+        "formula equals the multiplied-out form the Lab 1 solution codes "
+        "(centre = (k + z²/2)/(n + z²)).",
+        "The formula on the slide and the code in the solution are provably the same "
+        "function; the difference simplifies to zero.")
+    nb.equation("wald_and_wilson", '''
+    k, n, z = sp.symbols("k n z", positive=True)
+    p_hat = sp.Symbol(r"\\hat{p}")
+    display(Math(r"\\mathrm{CI}_{\\mathrm{Wald}} = "
+                 + pm(p_hat, z * sp.sqrt(p_hat * (1 - p_hat) / n))
+                 + r",\\qquad \\hat{p} = k/n"))
+    wilson_centre_slide = (p_hat + z**2 / (2 * n)) / (1 + z**2 / n)
+    wilson_half_slide = z * sp.sqrt(p_hat * (1 - p_hat) / n + z**2 / (4 * n**2)) / (1 + z**2 / n)
+    display(Math(r"\\mathrm{CI}_{\\mathrm{Wilson}} = \\frac{"
+                 + pm(p_hat + z**2 / (2 * n), z * sp.sqrt(p_hat * (1 - p_hat) / n + z**2 / (4 * n**2)))
+                 + r"}{1 + \\frac{z^2}{n}}"))
+    # The Lab 1 solution codes the same interval multiplied out by n:
+    centre_code = (k + z**2 / 2) / (n + z**2)
+    half_code = z / (n + z**2) * sp.sqrt(k * (n - k) / n + z**2 / 4)
+    print("slide centre - code centre, simplified:",
+          sp.simplify(wilson_centre_slide.subs(p_hat, k / n) - centre_code))
+    print("slide half-width² - code half-width², simplified:",
+          sp.simplify(wilson_half_slide.subs(p_hat, k / n)**2 - half_code**2))
+    ''', slides=["13", "14"])
+
+
+# =============================================================================
+
+def main() -> int:
+    front_matter()
+    setup()
+    part_1()
+    from sections import lab1, part2, part3, part4, closing
+    lab1.build(nb, explain)
+    part2.build(nb, explain)
+    part3.build(nb, explain)
+    part4.build(nb, explain)
+    closing.build(nb, explain)
+    nb.md("""
+    ---
+    ## Where this notebook and the slides differ, and why
+
+    The slides are the master and are not changed. Where a number computed here does
+    not match the number a slide prints, the notebook printed both at that point, with
+    the reason. The table gathers every one of them, as they were printed in this run.
+
+    Differences in wording, which the table cannot hold:
+
+    - **The shift bound.** "The alarm rule" and "How a threshold is measured" describe a
+      measured shift threshold and call a textbook 2 standard deviations refused, while
+      the decision slides judge the shift against the fixed 2.0. The notebook leads with
+      the fixed 2.0, prints the measured bound beside it, and sets the two side by side in
+      Appendix F, as the deck's own Appendix F does.
+    - **Constructed values under bus labels.** The entropy and divergence charts (speed
+      bins in km/h, "22/23 Jan"), the cumulative-curve chart ("reference day, 40
+      windows", 3 to 10 m/s) and the bin-edge diagram (900 to 1,400 kg) draw constructed
+      values; the notebook redraws each on the real windows and says so where it does.
+    """)
+    explain(
+        "Gather every number this notebook printed beside a slide's number.",
+        "A reader should find every difference between the notebook and the slides in one "
+        "place, with its reason, without searching the notebook.",
+        "Tabulates what each `beside()` call recorded during this run: the quantity, the value "
+        "computed here, the value on the slide or in the archive, and why they differ.",
+        "Every row is explained where it first appears; none of them is a change to the slides.")
+    nb.code('''
+    with pd.option_context("display.max_colwidth", None):     # the reasons, in full
+        display(pd.DataFrame(DIFFERENCES, columns=["quantity", "computed here",
+                                                   "the slide or the archive", "why they differ"]))
+    ''')
+    nb.write(OUTPUT)
+    print(f"wrote {OUTPUT.relative_to(ROOT)}")
+    if "--no-run" not in sys.argv:
+        execute(OUTPUT, EXERCISES)
+        print(f"executed {OUTPUT.relative_to(ROOT)} in {EXERCISES.relative_to(ROOT)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    sys.exit(main())

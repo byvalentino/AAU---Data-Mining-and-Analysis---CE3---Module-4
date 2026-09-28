@@ -1,0 +1,542 @@
+{
+ "about": "Every picture and chart on a shown slide of the deck, and where the notebook draws it. Slides whose diagrams are drawn with PowerPoint shapes are listed as 'shapes'. Checked by tools/check_notebook_sources.py.",
+ "decks": [
+  "Module4.pptx"
+ ],
+ "elements": [
+  {
+   "deck": "Module4.pptx",
+   "slide": 1,
+   "element": "image21.jpeg",
+   "treatment": "excluded",
+   "reason": "photograph of the AAU Copenhagen atrium, title background; carries no data or concept"
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 8,
+   "element": "shapes",
+   "treatment": "excluded",
+   "reason": "five text boxes joined by arrows (data, labels, model, adjudication, interval); the notebook states the same thread in words"
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 10,
+   "element": "chart1.xml",
+   "figures": [
+    "standard_normal"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 11,
+   "element": "chart2.xml",
+   "figures": [
+    "clt_on_payload"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 11,
+   "element": "chart3.xml",
+   "figures": [
+    "clt_on_payload"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 11,
+   "element": "chart4.xml",
+   "figures": [
+    "clt_on_payload"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 11,
+   "element": "image22.png",
+   "equations": [
+    "clt"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 12,
+   "element": "chart5.xml",
+   "figures": [
+    "information_kept"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 12,
+   "element": "image23.png",
+   "equations": [
+    "effective_sample"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 13,
+   "element": "chart6.xml",
+   "figures": [
+    "wald_exact_coverage"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 13,
+   "element": "image24.png",
+   "equations": [
+    "wald_and_wilson"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 14,
+   "element": "chart7.xml",
+   "figures": [
+    "interval_endpoints"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 14,
+   "element": "image25.png",
+   "equations": [
+    "wald_and_wilson"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 15,
+   "element": "chart8.xml",
+   "figures": [
+    "two_cases"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 16,
+   "element": "image26.png",
+   "figures": [
+    "wilson_bands"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 17,
+   "element": "chart9.xml",
+   "figures": [
+    "twenty_five_intervals"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 17,
+   "element": "image27.png",
+   "equations": [
+    "coverage"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 18,
+   "element": "image28.png",
+   "figures": [
+    "coverage"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 19,
+   "element": "chart10.xml",
+   "figures": [
+    "labels_needed"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 19,
+   "element": "image29.png",
+   "equations": [
+    "labels_needed"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 20,
+   "element": "chart11.xml",
+   "figures": [
+    "window_widths"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 21,
+   "element": "chart12.xml",
+   "figures": [
+    "study_counts"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 25,
+   "element": "chart13.xml",
+   "figures": [
+    "journey"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 26,
+   "element": "chart14.xml",
+   "figures": [
+    "jensen_chord"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 26,
+   "element": "image30.png",
+   "equations": [
+    "jensen"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 27,
+   "element": "chart15.xml",
+   "figures": [
+    "departure_demand"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 27,
+   "element": "image31.png",
+   "equations": [
+    "capacity_quantile"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 28,
+   "element": "chart16.xml",
+   "figures": [
+    "surprisal"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 29,
+   "element": "chart17.xml",
+   "figures": [
+    "entropy_cross_entropy"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 29,
+   "element": "image32.png",
+   "equations": [
+    "entropy_cross_entropy"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 30,
+   "element": "chart18.xml",
+   "figures": [
+    "kl_convex"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 30,
+   "element": "image33.png",
+   "equations": [
+    "kl_nonnegative"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 31,
+   "element": "chart19.xml",
+   "figures": [
+    "kl_terms"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 31,
+   "element": "image34.png",
+   "equations": [
+    "kl_divergence"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 32,
+   "element": "chart20.xml",
+   "figures": [
+    "cross_entropy_split"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 33,
+   "element": "chart21.xml",
+   "figures": [
+    "asymmetry"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 34,
+   "element": "shapes",
+   "figures": [
+    "binning_policy"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 35,
+   "element": "chart22.xml",
+   "figures": [
+    "psi_shares"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 35,
+   "element": "chart23.xml",
+   "figures": [
+    "psi_shares"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 35,
+   "element": "image35.png",
+   "equations": [
+    "psi"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 36,
+   "element": "chart24.xml",
+   "figures": [
+    "psi_terms_20_bins"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 37,
+   "element": "chart25.xml",
+   "figures": [
+    "psi_null"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 38,
+   "element": "chart26.xml",
+   "figures": [
+    "noise_floor_by_bins"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 38,
+   "element": "image36.png",
+   "equations": [
+    "floor_and_threshold"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 39,
+   "element": "chart27.xml",
+   "figures": [
+    "threshold_by_bins"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 39,
+   "element": "image37.png",
+   "equations": [
+    "floor_and_threshold"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 40,
+   "element": "chart28.xml",
+   "figures": [
+    "borrowed_false_alarms"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 43,
+   "element": "chart29.xml",
+   "figures": [
+    "cdf_area"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 44,
+   "element": "image38.png",
+   "equations": [
+    "wasserstein"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 44,
+   "element": "shapes",
+   "figures": [
+    "rank_pairing"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 47,
+   "element": "shapes",
+   "figures": [
+    "two_edge_policies"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 48,
+   "element": "image39.png",
+   "figures": [
+    "kl_vs_wasserstein"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 54,
+   "element": "image40.png",
+   "equations": [
+    "welch"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 55,
+   "element": "chart30.xml",
+   "figures": [
+    "p_value_against_n"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 55,
+   "element": "chart31.xml",
+   "figures": [
+    "effect_size_against_n"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 56,
+   "element": "image41.png",
+   "equations": [
+    "effect_sizes"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 58,
+   "element": "image42.png",
+   "figures": [
+    "alarm_rule"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 59,
+   "element": "image43.png",
+   "figures": [
+    "null_distribution"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 61,
+   "element": "image44.png",
+   "equations": [
+    "multiplicity"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 62,
+   "element": "image45.png",
+   "figures": [
+    "shifts"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 65,
+   "element": "image46.png",
+   "figures": [
+    "target"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 68,
+   "element": "image47.png",
+   "equations": [
+    "positive_control_and_limit"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 69,
+   "element": "image48.png",
+   "equations": [
+    "positive_control_and_limit"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 70,
+   "element": "image49.png",
+   "figures": [
+    "detection"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 71,
+   "element": "shapes",
+   "figures": [
+    "bin_edge_crossing"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 76,
+   "element": "chart32.xml",
+   "figures": [
+    "power"
+   ]
+  },
+  {
+   "deck": "Module4.pptx",
+   "slide": 91,
+   "element": "image50.png",
+   "equations": [
+    "appendix_a"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,218 @@
+{
+ "agresti1998": {
+  "cite": "Agresti & Coull, 1998",
+  "text": "Agresti, A. & Coull, B. A. (1998). Approximate is better than \"exact\" for interval estimation of binomial proportions. The American Statistician 52(2), 119–126. https://doi.org/10.1080/00031305.1998.10480550",
+  "file": "Module 4/literature/agresti1998.pdf"
+ },
+ "aiact2024": {
+  "cite": "Regulation (EU) 2024/1689",
+  "text": "Regulation (EU) 2024/1689 of the European Parliament and of the Council laying down harmonised rules on artificial intelligence (Artificial Intelligence Act). Official Journal L, 12.7.2024. https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+  "file": "Module 4/literature/OJ%3AL_202401689%3AEN%3ATXT.pdf",
+  "located": "Articles 12, 14, 15 and 72"
+ },
+ "arrow1951": {
+  "cite": "Arrow, Harris & Marschak, 1951",
+  "text": "Arrow, K. J., Harris, T. & Marschak, J. (1951). Optimal inventory policy. Econometrica 19(3), 250–272. https://doi.org/10.2307/1906813",
+  "file": "Module 3/literature/arrow1951.pdf",
+  "located": "§ 3, a static model with uncertainty: the stock set from the demand distribution F and the costs"
+ },
+ "bayley1946": {
+  "cite": "Bayley & Hammersley, 1946",
+  "text": "Bayley, G. V. & Hammersley, J. M. (1946). The \"effective\" number of independent observations in an autocorrelated time series. Supplement to the Journal of the Royal Statistical Society 8(2), 184–197. https://doi.org/10.2307/2983560",
+  "file": "Module 4/literature/bayley1946.pdf",
+  "located": "the effective number of observations, §§ 1–10; the Markoff (first-order) case in § 10, eqs (33)–(35), in continuous time. The discrete factor (1 − ρ)/(1 + ρ) is derived in this notebook rather than quoted"
+ },
+ "benjamini1995": {
+  "cite": "Benjamini & Hochberg, 1995",
+  "text": "Benjamini, Y. & Hochberg, Y. (1995). Controlling the false discovery rate: a practical and powerful approach to multiple testing. Journal of the Royal Statistical Society B 57(1), 289–300. https://doi.org/10.1111/j.2517-6161.1995.tb02031.x",
+  "file": "Module 4/literature/benjamini1995.pdf"
+ },
+ "brown2001": {
+  "cite": "Brown, Cai & DasGupta, 2001",
+  "text": "Brown, L. D., Cai, T. T. & DasGupta, A. (2001). Interval estimation for a binomial proportion. Statistical Science 16(2), 101–133. https://doi.org/10.1214/ss/1009213286",
+  "file": "Module 4/literature/brown2001.pdf",
+  "located": "abstract and § 2: the \"erratic\" coverage of the standard (Wald) interval"
+ },
+ "casella2002": {
+  "cite": "Casella & Berger, 2002",
+  "text": "Casella, G. & Berger, R. L. (2002). Statistical Inference, 2nd ed. Duxbury. Chapter 5.",
+  "file": "Module 2/literature/Pages from casella_berger_statistical_inference1.pdf"
+ },
+ "cohen1988": {
+  "cite": "Cohen, 1988",
+  "text": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences, 2nd ed. Lawrence Erlbaum (Routledge reprint, 2013).",
+  "file": "Module 4/literature/cohen2013.pdf"
+ },
+ "cover2006": {
+  "cite": "Cover & Thomas, 2006",
+  "text": "Cover, T. M. & Thomas, J. A. (2006). Elements of Information Theory, 2nd ed. Wiley. https://doi.org/10.1002/047174882X",
+  "file": "Module 4/literature/Elements-of-Information-Theory.pdf",
+  "located": "Theorem 2.6.3 (information inequality)"
+ },
+ "currie1968": {
+  "cite": "Currie, 1968",
+  "text": "Currie, L. A. (1968). Limits for qualitative detection and quantitative determination. Analytical Chemistry 40(3), 586–593. https://doi.org/10.1021/ac60259a007",
+  "file": "Module 4/literature/currie1968.pdf",
+  "located": "the critical level, the detection limit and the determination limit"
+ },
+ "efron1979": {
+  "cite": "Efron, 1979",
+  "text": "Efron, B. (1979). Bootstrap methods: another look at the jackknife. Annals of Statistics 7(1), 1–26. https://doi.org/10.1214/aos/1176344552",
+  "file": "Module 4/literature/efron1979.pdf"
+ },
+ "friedman2004": {
+  "cite": "Friedman, 2004",
+  "text": "Friedman, J. H. (2004). On multivariate goodness-of-fit and two-sample testing. Stanford University technical report; PHYSTAT 2003 proceedings.",
+  "file": null
+ },
+ "garwood1936": {
+  "cite": "Garwood, 1936",
+  "text": "Garwood, F. (1936). Fiducial limits for the Poisson distribution. Biometrika 28(3/4), 437–442. https://doi.org/10.1093/biomet/28.3-4.437",
+  "file": null,
+  "note": "added by this notebook for the exact Poisson interval the deck quotes without a source"
+ },
+ "glass1976": {
+  "cite": "Glass, 1976",
+  "text": "Glass, G. V. (1976). Primary, secondary, and meta-analysis of research. Educational Researcher 5(10), 3–8. https://doi.org/10.3102/0013189X005010003",
+  "file": "Module 4/literature/glass1976.pdf",
+  "located": "effect sizes against untreated control groups"
+ },
+ "jeffreys1946": {
+  "cite": "Jeffreys, 1946",
+  "text": "Jeffreys, H. (1946). An invariant form for the prior probability in estimation problems. Proceedings of the Royal Society A 186, 453–461. https://doi.org/10.1098/rspa.1946.0056",
+  "file": "Module 4/literature/jeffreys1946.pdf"
+ },
+ "jensen1906": {
+  "cite": "Jensen, 1906",
+  "text": "Jensen, J. L. W. V. (1906). Sur les fonctions convexes et les inégalités entre les valeurs moyennes. Acta Mathematica 30, 175–193. https://doi.org/10.1007/BF02418571",
+  "file": "Module 4/literature/jensen1906.pdf"
+ },
+ "kantorovich1942": {
+  "cite": "Kantorovich, 1942",
+  "text": "Kantorovich, L. V. (1942). On the translocation of masses. Doklady Akademii Nauk SSSR 37(7–8), 227–229; English reprint, Management Science 5(1), 1958, 1–4. https://doi.org/10.1287/mnsc.5.1.1",
+  "file": "Module 4/literature/kantorovitch1958.pdf"
+ },
+ "kullback1951": {
+  "cite": "Kullback & Leibler, 1951",
+  "text": "Kullback, S. & Leibler, R. A. (1951). On information and sufficiency. Annals of Mathematical Statistics 22(1), 79–86. https://doi.org/10.1214/aoms/1177729694",
+  "file": "Module 4/literature/Kullback-Leibler-1951-On-Information-and-Sufficiency.pdf"
+ },
+ "lewis1994": {
+  "cite": "Lewis, 1994",
+  "text": "Lewis, E. M. (1994). An Introduction to Credit Scoring. Athena Press. The origin of the 0.1 and 0.25 rule of thumb.",
+  "file": null
+ },
+ "lopezpaz2017": {
+  "cite": "Lopez-Paz & Oquab, 2017",
+  "text": "Lopez-Paz, D. & Oquab, M. (2017). Revisiting classifier two-sample tests. International Conference on Learning Representations (ICLR).",
+  "file": null
+ },
+ "mackay2003": {
+  "cite": "MacKay, 2003",
+  "text": "MacKay, D. J. C. (2003). Information Theory, Inference, and Learning Algorithms. Cambridge University Press. https://www.inference.org.uk/itprnn/book.pdf",
+  "file": "Module 4/literature/book.pdf",
+  "located": "§ 2.6, Gibbs' inequality"
+ },
+ "murphy2022": {
+  "cite": "Murphy, 2022",
+  "text": "Murphy, K. P. (2022). Probabilistic Machine Learning: An Introduction. MIT Press. https://probml.github.io/pml-book/book1.html",
+  "file": "Module 4/literature/book1.pdf",
+  "located": "§ 6.1.2, cross entropy; § 6.2.5, KL divergence and MLE"
+ },
+ "page1954": {
+  "cite": "Page, 1954",
+  "text": "Page, E. S. (1954). Continuous inspection schemes. Biometrika 41(1/2), 100–115. https://doi.org/10.1093/biomet/41.1-2.100",
+  "file": "Module 4/literature/page1954.pdf"
+ },
+ "peyre2019": {
+  "cite": "Peyré & Cuturi, 2019",
+  "text": "Peyré, G. & Cuturi, M. (2019). Computational Optimal Transport. Foundations and Trends in Machine Learning 11(5–6), 355–607. https://doi.org/10.1561/2200000073",
+  "file": "Module 4/literature/1803.00567v4.pdf",
+  "located": "Remark 2.28 (sorted empirical samples) and Remark 2.30 (quantile functions on the line)"
+ },
+ "quinonero2009": {
+  "cite": "Quiñonero-Candela et al., 2009",
+  "text": "Quiñonero-Candela, J., Sugiyama, M., Schwaighofer, A. & Lawrence, N. D. (eds) (2009). Dataset Shift in Machine Learning. MIT Press.",
+  "file": "Module 3/literature/Dataset Shift Ch. 1.pdf",
+  "located": "chapter 1 only"
+ },
+ "rabanser2019": {
+  "cite": "Rabanser, Günnemann & Lipton, 2019",
+  "text": "Rabanser, S., Günnemann, S. & Lipton, Z. C. (2019). Failing loudly: an empirical study of methods for detecting dataset shift. Advances in Neural Information Processing Systems 32. Required reading. https://arxiv.org/abs/1810.11953",
+  "file": "Module 4/literature/1810.11953v4.pdf",
+  "located": "§ 3, the domain classifier and its binomial test"
+ },
+ "ramdas2017": {
+  "cite": "Ramdas, García Trillos & Cuturi, 2017",
+  "text": "Ramdas, A., García Trillos, N. & Cuturi, M. (2017). On Wasserstein two-sample testing and related families of nonparametric tests. Entropy 19(2), 47. https://doi.org/10.3390/e19020047",
+  "file": "Module 4/literature/ramdas2017.pdf"
+ },
+ "saltelli2019": {
+  "cite": "Saltelli et al., 2019",
+  "text": "Saltelli, A. et al. (2019). Why so many published sensitivity analyses are false: a systematic review of sensitivity analysis practices. Environmental Modelling and Software 114, 29–39. https://doi.org/10.1016/j.envsoft.2019.01.012",
+  "file": "Module 4/literature/saltelli2019.pdf",
+  "located": "abstract: sensitivity analysis is distinct from uncertainty analysis"
+ },
+ "satterthwaite1946": {
+  "cite": "Satterthwaite, 1946",
+  "text": "Satterthwaite, F. E. (1946). An approximate distribution of estimates of variance components. Biometrics Bulletin 2(6), 110–114. https://doi.org/10.2307/3002019",
+  "file": null
+ },
+ "servizi2023": {
+  "cite": "Servizi et al., 2023",
+  "text": "Servizi, V., Persson, D. R., Pereira, F. C., Villadsen, H., Bækgaard, P., Peled, I. & Nielsen, O. A. (2023). \"Is not the truth the truth?\": analyzing the impact of user validations for bus in/out detection in smartphone-based surveys. IEEE Transactions on Intelligent Transportation Systems 24(11), 11905–11920.",
+  "file": "Module 1/literature/Is_Not_the_Truth_the_Truth_Analyzing_the_Impact_of_User_Validations_for_Bus_In_Out_Detection_in_Smartphone_Based_Surveys.pdf",
+  "located": "Sec. III-A (fourteen valid replies) and Sec. IV-A (eighteen users filmed; \"more than 40% of the validations contained at least one error\"; six errors after correction, seven before). \"6 of 14\" is inferred, not stated: more than 40% of 14 is at least 6, and six errors in all is at most 6"
+ },
+ "shannon1948": {
+  "cite": "Shannon, 1948",
+  "text": "Shannon, C. E. (1948). A mathematical theory of communication. Bell System Technical Journal 27(3), 379–423. https://doi.org/10.1002/j.1538-7305.1948.tb01338.x",
+  "file": "Module 4/literature/shannon1948.pdf"
+ },
+ "shimodaira2000": {
+  "cite": "Shimodaira, 2000",
+  "text": "Shimodaira, H. (2000). Improving predictive inference under covariate shift by weighting the log-likelihood function. Journal of Statistical Planning and Inference 90(2), 227–244. https://doi.org/10.1016/S0378-3758(00)00115-4",
+  "file": null
+ },
+ "siddiqi2006": {
+  "cite": "Siddiqi, 2006",
+  "text": "Siddiqi, N. (2006). Credit Risk Scorecards. Wiley; and (2017) Intelligent Credit Scoring, 2nd ed. Wiley. https://doi.org/10.1002/9781119282396",
+  "file": null
+ },
+ "truong2020": {
+  "cite": "Truong, Oudre & Vayatis, 2020",
+  "text": "Truong, C., Oudre, L. & Vayatis, N. (2020). Selective review of offline change point detection methods. Signal Processing 167, 107299. https://doi.org/10.1016/j.sigpro.2019.107299",
+  "file": "Module 4/literature/truong2020.pdf"
+ },
+ "vallender1974": {
+  "cite": "Vallender, 1974",
+  "text": "Vallender, S. S. (1974). Calculation of the Wasserstein distance between probability distributions on the line. Theory of Probability and Its Applications 18(4), 784–786. https://doi.org/10.1137/1118101",
+  "file": "Module 4/literature/vallender1974.pdf"
+ },
+ "wasserman2004": {
+  "cite": "Wasserman, 2004",
+  "text": "Wasserman, L. (2004). All of Statistics. Springer.",
+  "file": "Module 4/literature/Wasserman-2004-All-of-Statistics.pdf",
+  "located": "Theorem 4.9 (Jensen's inequality); chapter 5 (the central limit theorem)"
+ },
+ "wasserstein2016": {
+  "cite": "Wasserstein & Lazar, 2016",
+  "text": "Wasserstein, R. L. & Lazar, N. A. (2016). The ASA's statement on p-values: context, process, and purpose. The American Statistician 70(2), 129–133. https://doi.org/10.1080/00031305.2016.1154108",
+  "file": "Module 4/literature/wasserstein2016.pdf"
+ },
+ "welch1947": {
+  "cite": "Welch, 1947",
+  "text": "Welch, B. L. (1947). The generalization of \"Student's\" problem when several different population variances are involved. Biometrika 34(1/2), 28–35. https://doi.org/10.1093/biomet/34.1-2.28",
+  "file": "Module 4/literature/welch1947.pdf"
+ },
+ "wilson1927": {
+  "cite": "Wilson, 1927",
+  "text": "Wilson, E. B. (1927). Probable inference, the law of succession, and statistical inference. Journal of the American Statistical Association 22(158), 209–212. https://doi.org/10.1080/01621459.1927.10502953",
+  "file": "Module 4/literature/Wilson-1927-Probable-Inference.pdf"
+ },
+ "yurdakul2020": {
+  "cite": "Yurdakul & Naranjo, 2020",
+  "text": "Yurdakul, B. & Naranjo, J. (2020). Statistical properties of the population stability index. Journal of Risk Model Validation 14(4), 89–100. https://doi.org/10.21314/JRMV.2020.227",
+  "file": null
+ }
+}
